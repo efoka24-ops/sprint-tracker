@@ -1,0 +1,29 @@
+{
+  "name": "sprint-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "postinstall": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "node --env-file=.env.local prisma/seed.mjs",
+    "local:setup": "prisma generate --schema prisma/schema.local.prisma && prisma db push --schema prisma/schema.local.prisma --skip-generate && node --env-file=.env.local prisma/seed.mjs",
+    "local:dev": "next dev",
+    "prod:generate": "prisma generate",
+    "test:e2e": "node tests/e2e.mjs"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.1",
+    "next": "^15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.2.1"
+  }
+}

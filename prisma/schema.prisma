@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Developpeur {
+  id        String   @id @default(cuid())
+  nom       String   @unique
+  role      String   @default("Développeur") // "Développeur" | "Tech Lead"
+  email     String?
+  actif     Boolean  @default(true)
+  entrees   Entree[]
+  createdAt DateTime @default(now())
+}
+
+model Sprint {
+  id             String    @id @default(cuid())
+  numero         Int       @unique          // 1, 2, 3...
+  libelle        String                      // "Sprint #01"
+  dateDebut      DateTime
+  dateFin        DateTime
+  nbSemaines     Int       @default(3)
+  capaciteTotale Int       @default(600)     // heures équipe pour le sprint
+  cloture        Boolean   @default(false)
+  semaines       Semaine[]
+}
+
+model Semaine {
+  id         String   @id @default(cuid())
+  sprint     Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  sprintId   String
+  numero     Int                        // 1 = S1, 2 = S2, 3 = S3
+  dateDebut  DateTime
+  dateFin    DateTime                   // vendredi = point de validation
+  capacite   Int      @default(200)     // capacité équipe pour la semaine
+  cloturee   Boolean  @default(false)
+  entrees    Entree[]
+
+  @@unique([sprintId, numero])
+}
+
+model Entree {
+  id            String      @id @default(cuid())
+  semaine       Semaine     @relation(fields: [semaineId], references: [id], onDelete: Cascade)
+  semaineId     String
+  developpeur   Developpeur @relation(fields: [developpeurId], references: [id], onDelete: Cascade)
+  developpeurId String
+  ticket        String                       // "#9673"
+  idPerfit      String?                      // identifiant Perfit (référentiel Orange)
+  projet        String                       // "HLR Manager"
+  objectif      String                       // objectif de la semaine
+  capaciteH     Float       @default(0)
+  reelH         Float?
+  execution     String      @default("NON_DEMARRE") // NON_DEMARRE|EN_COURS|EXECUTE|BLOQUE
+  valide        Boolean     @default(false)
+  commentaire   String?
+  blocage       String?
+  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime    @default(now())
+
+  @@index([semaineId])
+}
