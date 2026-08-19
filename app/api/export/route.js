@@ -1,10 +1,14 @@
 import { prisma } from '@/lib/db';
 import { STATUTS } from '@/lib/constants';
+import { utilisateurCourant } from '@/lib/auth';
+import { peut } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
 /** Export CSV (Excel FR : séparateur ';') du suivi d'une semaine. */
 export async function GET(req) {
+  if (!peut(await utilisateurCourant(), 'export.csv')) return new Response('Non connecté', { status: 401 });
+
   const semaineId = req.nextUrl.searchParams.get('semaineId');
   if (!semaineId) return new Response('semaineId requis', { status: 400 });
 

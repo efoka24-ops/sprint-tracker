@@ -8,13 +8,17 @@ datasource db {
 }
 
 model Developpeur {
-  id        String   @id @default(cuid())
-  nom       String   @unique
-  role      String   @default("Développeur") // "Développeur" | "Tech Lead"
-  email     String?
-  actif     Boolean  @default(true)
-  entrees   Entree[]
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  nom            String   @unique
+  email          String   @unique
+  motDePasse     String                        // scrypt : sel:hash
+  role           String   @default("DEVELOPPEUR") // SUPER_ADMIN | TECH_LEAD | DEVELOPPEUR | OBSERVATEUR
+  actif          Boolean  @default(true)
+  doitChangerMdp Boolean  @default(true)       // mot de passe provisoire remis par le super admin
+  versionSession Int      @default(1)          // incrémenté pour révoquer les sessions en cours
+  derniereConnexion DateTime?
+  entrees        Entree[]
+  createdAt      DateTime @default(now())
 }
 
 model Sprint {

@@ -1,0 +1,315 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { STATUTS } from '@/lib/constants';
+import { initiales } from '@/components/Shell';
+
+const ORDRE_STATUTS = ['NON_DEMARRE', 'EN_COURS', 'EXECUTE', 'BLOQUE'];
+
+const STYLE_STATUT = {
+  NON_DEMARRE: { label: 'Non démarré', bg: '#f0f1f3', color: '#7b828c' },
+  EN_COURS: { label: 'En cours', bg: '#fff2e3', color: '#c2680a' },
+  EXECUTE: { label: 'Exécuté', bg: '#e7f6ed', color: '#1f8a4c' },
+  BLOQUE: { label: 'Bloqué', bg: '#fdecea', color: '#c0392b' },
+};
+
+const COULEURS_AVATAR = ['#FF7900', '#111', '#5c6470', '#2e9c5a', '#8e44ad'];
+const VUES = ['Vue d’ensemble', 'Par porteur', 'Bilan capacité'];
+
+export default function TableauBord({ semaine, semaines, droits, moiId }) {
+  const router = useRouter();
+  const [vue, setVue] = useState(VUES[0]);
+  const [lignes, setLignes] = useState(semaine.entrees);
+  const [cloturee, setCloturee] = useState(semaine.cloturee);
+  const [erreur, setErreur] = useState('');
+
+  const capaciteTotale = semaine.capacite || lignes.reduce((s, e) => s + e.capaciteH, 0);
+
+  const stats = useMemo(() => {
+    const total = lignes.length;
+    const valides = lignes.filter((e) => e.valide).length;
+    const enCours = lignes.filter((e) => e.execution === 'EN_COURS').length;
+    const bloques = lignes.filter((e) => e.execution === 'BLOQUE').length;
+    const reel = lignes.reduce((s, e) => s + (e.reelH || 0), 0);
+    const pct = (n) => (total ? Math.round((n / total) * 100) : 0);
+    return { total, valides, enCours, bloques, reel, pct };
+  }, [lignes]);
+
+  const parPorteur = useMemo(() => {
+    const m = new Map();
+    for (const e of lignes) {
+      const c = m.get(e.developpeur.id) ?? { dev: e.developpeur, cap: 0, reel: 0, valides: 0, total: 0 };
+      c.cap += e.capaciteH || 0;
+      c.reel += e.reelH || 0;
+      c.total += 1;
+      if (e.valide) c.valides += 1;
+      m.set(e.developpeur.id, c);
+    }
+    return [...m.values()].sort((a, b) => a.dev.nom.localeCompare(b.dev.nom));
+  }, [lignes]);
+
+  const patch = async (id, corps, majLocale) => {
+    setErreur('');
+    const avant = lignes;
+    setLignes((l) => l.map((e) => (e.id === id ? { ...e, ...majLocale } : e)));
+    const r = await fetch(`/api/entrees/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps),
+    });
+    if (!r.ok) {
+      setLignes(avant);
+      setErreur((await r.json()).error);
+    }
+  };
+
+  const basculerValide = (e) => {
+    if (!droits.valider || cloturee) return;
+    patch(e.id, { valide: !e.valide }, { valide: !e.valide });
+  };
+
+  const cyclerStatut = (e) => {
+    const peutModifier = droits.modifierTous || e.developpeur.id === moiId;
+    if (!peutModifier || cloturee) return;
+    const suivant = ORDRE_STATUTS[(ORDRE_STATUTS.indexOf(e.execution) + 1) % ORDRE_STATUTS.length];
+    patch(e.id, { execution: suivant }, { execution: suivant });
+  };
+
+  const cloturer = async () => {
+    if (!droits.cloturer) return;
+    const cible = !cloturee;
+    if (cible && !confirm('Clôturer la semaine ? La saisie des développeurs sera fermée.')) return;
+    const r = await fetch(`/api/semaines/${semaine.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cloturee: cible }),
+    });
+    if (r.ok) { setCloturee(cible); router.refresh(); } else setErreur((await r.json()).error);
+  };
+
+  const kpis = [
+    { valeur: `${stats.valides}/${stats.total}`, label: 'Objectifs validés', icone: '✔', accent: '#2e9c5a', pct: stats.pct(stats.valides) },
+    { valeur: `${stats.reel}h`, label: `Capacité consommée / ${capaciteTotale}h`, icone: '⚡', accent: '#FF7900', pct: capaciteTotale ? Math.min(100, Math.round((stats.reel / capaciteTotale) * 100)) : 0 },
+    { valeur: String(stats.enCours), label: 'Sujets en cours', icone: '◐', accent: '#c2680a', pct: stats.pct(stats.enCours) },
+    { valeur: String(stats.bloques), label: 'Sujets bloqués', icone: '⚠', accent: '#c0392b', pct: stats.pct(stats.bloques) },
+  ];
+
+  const df = (d) => new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+
+  return (
+    <>
+      <header className="entete">
+        <div style={{ flex: 'none' }}>
+          <div className="entete-kicker">
+            Sprint #{String(semaine.sprint.numero).padStart(2, '0')} · Semaine S{String(semaine.numero).padStart(2, '0')}
+            {cloturee && ' · clôturée'}
+          </div>
+          <h1 className="entete-titre">Suivi des objectifs</h1>
+        </div>
+
+        <div className="entete-actions noprint">
+          <div className="segment">
+            {VUES.map((v) => (
+              <button key={v} className={vue === v ? 'on' : ''} onClick={() => setVue(v)}>{v}</button>
+            ))}
+          </div>
+
+          <select
+            value={semaine.id}
+            onChange={(e) => router.push(`/?semaine=${e.target.value}`)}
+            style={{ width: 'auto', minWidth: 240, borderRadius: 10 }}
+          >
+            {semaines.map((s) => (
+              <option key={s.id} value={s.id}>
+                Sprint #{String(s.sprint.numero).padStart(2, '0')} · S{s.numero} — {df(s.dateDebut)} au {df(s.dateFin)}
+              </option>
+            ))}
+          </select>
+
+          <div className="puce-capacite"><span style={{ fontSize: 15 }}>⚡</span>{capaciteTotale} h capacité</div>
+
+          {droits.cloturer && (
+            <button className="btn-cloture" onClick={cloturer}>
+              {cloturee ? 'Rouvrir la semaine' : 'Clôturer la semaine'}
+            </button>
+          )}
+        </div>
+      </header>
+
+      <div className="contenu">
+        {erreur && <div style={{ color: 'var(--rouge)', fontWeight: 700 }}>{erreur}</div>}
+
+        <div className="kpis">
+          {kpis.map((k) => (
+            <div className="kpi-carte" key={k.label} style={{ borderTopColor: k.accent }}>
+              <div className="kpi-haut">
+                <div className="kpi-valeur">{k.valeur}</div>
+                <div className="kpi-icone">{k.icone}</div>
+              </div>
+              <div className="kpi-label">{k.label}</div>
+              <div className="jauge"><div style={{ width: `${k.pct}%`, background: k.accent }} /></div>
+            </div>
+          ))}
+        </div>
+
+        <div className="corps">
+          <div className="bloc">
+            <div className="bloc-entete">
+              <div className="bloc-titre">{vue === 'Par porteur' ? 'Charge par porteur' : 'Sujets du sprint'}</div>
+              <div className="bloc-note">
+                {cloturee
+                  ? 'Semaine clôturée — lecture seule'
+                  : droits.valider ? 'Cochez « validé » en fin de semaine' : 'Cliquez sur votre statut pour le faire évoluer'}
+              </div>
+            </div>
+
+            {vue === 'Par porteur' ? (
+              <div style={{ padding: '8px 22px 18px' }}>
+                {!parPorteur.length && <div className="vide">Aucune saisie pour cette semaine.</div>}
+                {parPorteur.map((p) => (
+                  <div key={p.dev.id} style={{ padding: '14px 0', borderBottom: '1px solid #f2f3f5' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                      <b>{p.dev.nom}</b>
+                      <span style={{ color: '#7b828c' }}>
+                        {p.reel} / {p.cap} h · {p.valides}/{p.total} objectif(s) validé(s)
+                      </span>
+                    </div>
+                    <div className="barre-dev" style={{ marginTop: 8 }}>
+                      <div style={{
+                        width: `${p.cap ? Math.min(100, Math.round((p.reel / p.cap) * 100)) : 0}%`,
+                        background: p.reel > p.cap ? '#c0392b' : p.reel >= p.cap ? '#2e9c5a' : '#FF7900',
+                      }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : vue === 'Bilan capacité' ? (
+              <div className="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Développeur</th><th className="num">Cap. prévue</th><th className="num">Exécutée</th>
+                      <th className="num">Écart</th><th className="num">Objectifs validés</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {parPorteur.map((p) => (
+                      <tr key={p.dev.id}>
+                        <td>{p.dev.nom}</td>
+                        <td className="num">{p.cap} h</td>
+                        <td className="num">{p.reel} h</td>
+                        <td className="num" style={{ color: p.reel > p.cap ? 'var(--rouge)' : 'var(--vert)' }}>
+                          {p.reel - p.cap > 0 ? '+' : ''}{p.reel - p.cap} h
+                        </td>
+                        <td className="num">{p.valides} / {p.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <>
+                <div className="lignes tete">
+                  <div>Porteur</div><div>Sujet · objectif</div>
+                  <div className="c">Cap.</div><div className="c">Réel</div>
+                  <div className="c">Statut</div><div className="c">Validé</div>
+                </div>
+
+                {!lignes.length && <div className="vide">Aucune saisie pour cette semaine.</div>}
+
+                {lignes.map((e, i) => {
+                  const st = STYLE_STATUT[e.execution] ?? STYLE_STATUT.NON_DEMARRE;
+                  const modifiable = !cloturee && (droits.modifierTous || e.developpeur.id === moiId);
+                  return (
+                    <div className="lignes" key={e.id} style={{ background: i % 2 ? '#fbfbfc' : '#fff' }}>
+                      <div className="porteur">
+                        <div className="porteur-avatar" style={{ background: COULEURS_AVATAR[i % COULEURS_AVATAR.length] }}>
+                          {initiales(e.developpeur.nom)}
+                        </div>
+                        <div className="porteur-nom">{e.developpeur.nom}</div>
+                      </div>
+                      <div style={{ paddingRight: 14 }}>
+                        <div className="sujet-titre">
+                          {e.ticket} · {e.projet}
+                          {e.idPerfit && <span style={{ color: '#8c9099', fontWeight: 400 }}> · Perfit {e.idPerfit}</span>}
+                        </div>
+                        <div className="sujet-objectif">{e.objectif}</div>
+                      </div>
+                      <div className="c" style={{ fontSize: 13.5, fontWeight: 700 }}>{e.capaciteH ? `${e.capaciteH} h` : '—'}</div>
+                      <div className="c" style={{ fontSize: 13.5, color: '#7b828c' }}>{e.reelH != null ? `${e.reelH} h` : '—'}</div>
+                      <div className="c">
+                        <button
+                          className={`badge${modifiable ? ' cliquable' : ''}`}
+                          style={{ background: st.bg, color: st.color }}
+                          onClick={() => cyclerStatut(e)}
+                          title={modifiable ? 'Cliquer pour changer de statut' : 'Statut porté par un autre développeur'}
+                        >
+                          {st.label}
+                        </button>
+                      </div>
+                      <div className="c">
+                        <button
+                          className={`coche${e.valide ? ' ok' : ''}${droits.valider && !cloturee ? ' cliquable' : ''}`}
+                          onClick={() => basculerValide(e)}
+                          title={droits.valider ? 'Valider l’objectif' : 'Validation réservée au Tech Lead'}
+                        >
+                          {e.valide ? '✓' : ''}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+
+          <div className="colonne-droite">
+            <div className="carte-blanche">
+              <div className="bloc-titre" style={{ marginBottom: 16 }}>Capacité par porteur</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {!parPorteur.length && <div className="bloc-note">Aucune donnée.</div>}
+                {parPorteur.map((p) => {
+                  const pct = p.cap ? Math.min(100, Math.round((p.reel / p.cap) * 100)) : 0;
+                  return (
+                    <div key={p.dev.id}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                        <span style={{ fontWeight: 700 }}>{p.dev.nom}</span>
+                        <span style={{ color: '#7b828c' }}>{p.reel} / {p.cap || '—'} h</span>
+                      </div>
+                      <div className="barre-dev">
+                        <div style={{ width: `${pct}%`, background: p.reel > p.cap ? '#c0392b' : pct >= 100 ? '#2e9c5a' : '#FF7900' }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="carte-noire">
+              <div className="bloc-titre" style={{ marginBottom: 4 }}>Avancement du sprint</div>
+              <div style={{ fontSize: 12.5, color: '#9aa0a8', marginBottom: 16 }}>Objectifs validés cette semaine</div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14 }}>
+                <div className="pct">{stats.pct(stats.valides)}%</div>
+                <div style={{ fontSize: 13, color: '#c7ccd2', paddingBottom: 8 }}>
+                  {stats.valides} sur {stats.total} sujets validés
+                </div>
+              </div>
+              <div style={{ height: 8, background: '#2a2a2a', borderRadius: 5, marginTop: 16, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${stats.pct(stats.valides)}%`, background: '#FF7900', borderRadius: 5 }} />
+              </div>
+              <a
+                href={`/api/export?semaineId=${semaine.id}`}
+                style={{ display: 'inline-block', marginTop: 18, fontSize: 13, fontWeight: 700 }}
+              >
+                Exporter le CSV de la semaine →
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ fontSize: 12.5, color: '#8c9099' }}>
+          S{semaine.numero} du {df(semaine.dateDebut)} au {df(semaine.dateFin)} ·
+          {' '}validation le vendredi · statuts : {ORDRE_STATUTS.map((s) => STATUTS[s].label).join(' · ')}
+        </div>
+      </div>
+    </>
+  );
+}

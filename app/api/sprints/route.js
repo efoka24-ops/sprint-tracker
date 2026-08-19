@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { isAdmin } from '@/lib/auth';
+import { utilisateurCourant } from '@/lib/auth';
+import { peut } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,10 @@ export async function GET() {
 
 /** Crée un sprint et génère automatiquement ses N semaines (lundi -> vendredi). */
 export async function POST(req) {
-  if (!(await isAdmin())) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  const moi = await utilisateurCourant();
+  if (!peut(moi, 'sprint.creer')) {
+    return NextResponse.json({ error: 'Réservé au super admin' }, { status: 403 });
+  }
   const { numero, dateDebut, nbSemaines = 3, capaciteTotale = 600 } = await req.json();
   if (!numero || !dateDebut) return NextResponse.json({ error: 'Numéro et date de début requis' }, { status: 400 });
 

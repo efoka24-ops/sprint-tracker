@@ -1,58 +1,97 @@
-import { toutesSemaines } from '@/lib/queries';
+import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { toutesSemaines } from '@/lib/queries';
+import { utilisateurCourant } from '@/lib/auth';
+import { peut } from '@/lib/roles';
+import Shell from '@/components/Shell';
 import FormulaireSaisie from './Formulaire';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Saisie() {
-  if (!process.env.DATABASE_URL) {
-    return (
-      <div className="card">
-        <div className="eyebrow">Configuration requise</div>
-        <h1 className="h1">Base de donnees non <em>configuree</em></h1>
-        <p className="sub" style={{ marginBottom: 16 }}>
-          Creez un fichier .env.local avec DATABASE_URL pour activer la saisie developpeur.
-        </p>
-        <pre style={{ background: '#f7f7f7', padding: 12, border: '1px solid #e8e8e8', borderRadius: 6, whiteSpace: 'pre-wrap' }}>
-{`DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DB_NAME?schema=public"
-ADMIN_PASSWORD="change-me-strong-password"`}
-        </pre>
-      </div>
-    );
-  }
+  const moi = await utilisateurCourant();
+  if (!moi) redirect('/connexion');
 
-  let semaines = [];
-  let devs = [];
-
-  try {
-    [semaines, devs] = await Promise.all([
-      toutesSemaines(),
-      prisma.developpeur.findMany({ where: { actif: true }, orderBy: { nom: 'asc' } }),
-    ]);
-  } catch (error) {
-    console.error('Sprint Tracker DB error on /saisie:', error);
-    return (
-      <div className="card">
-        <div className="eyebrow">Base indisponible</div>
-        <h1 className="h1">Connexion base de donnees <em>en echec</em></h1>
-        <p className="sub">
-          Verifiez DATABASE_URL, l'accessibilite PostgreSQL puis relancez l'application.
-        </p>
-      </div>
-    );
-  }
-
+  const semaines = await toutesSemaines();
   const ouvertes = semaines.filter((s) => !s.cloturee);
 
+  // Un sprint = 3 semaines : on montre au développeur, semaine par semaine,
+  // s'il a bien défini son objectif.
+  const sprintCourant = semaines[0]?.sprint;
+  const semainesDuSprint = semaines
+    .filter((s) => s.sprintId === sprintCourant?.id)
+    .sort((a, b) => a.numero - b.numero);
+
+  const mesEntrees = semainesDuSprint.length
+    ? await prisma.entree.findMany({
+        where: { developpeurId: moi.id, semaineId: { in: semainesDuSprint.map((s) => s.id) } },
+        select: { semaineId: true },
+      })
+    : [];
+
+  const avancement = semainesDuSprint.map((s) => ({
+    id: s.id,
+    numero: s.numero,
+    dateFin: s.dateFin,
+    cloturee: s.cloturee,
+    nbObjectifs: mesEntrees.filter((e) => e.semaineId === s.id).length,
+  }));
+
   return (
-    <>
-      <div className="eyebrow">Saisie développeur</div>
-      <h1 className="h1">Mon objectif de <em>la semaine</em></h1>
-      <p className="sub">
-        Renseignez votre sujet, votre capacité et vos heures réelles. Le tableau de bord
-        et le bilan capacité se mettent à jour automatiquement.
-      </p>
-      <FormulaireSaisie semaines={JSON.parse(JSON.stringify(ouvertes))} devs={devs} />
-    </>
+    <Shell utilisateur={moi} actif="/saisie">
+      <header className="entete">
+        <div>
+          <div className="entete-kicker">
+            Saisie développeur{sprintCourant ? ` · ${sprintCourant.libelle} · ${semainesDuSprint.length} semaines` : ''}
+          </div>
+          <h1 className="entete-titre">Mes objectifs de la semaine</h1>
+        </div>
+      </header>
+
+      <div className="contenu">
+        {!peut(moi, 'entree.creer.soi') ? (
+          <div className="carte-blanche">
+            Votre rôle est en consultation seule : la saisie d’objectifs ne vous est pas ouverte.
+          </div>
+        ) : (
+          <>
+            {avancement.length > 0 && (
+              <div className="carte-blanche">
+                <div className="bloc-titre" style={{ marginBottom: 4 }}>Mon sprint en cours</div>
+                <p className="bloc-note" style={{ marginBottom: 16 }}>
+                  Un objectif doit être défini pour chacune des {avancement.length} semaines, validé le vendredi.
+                </p>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  {avancement.map((s) => {
+                    const ok = s.nbObjectifs > 0;
+                    return (
+                      <div key={s.id} style={{
+                        flex: '1 1 180px', padding: '14px 16px', borderRadius: 12,
+                        border: `1px solid ${ok ? '#bfe6cd' : '#ffd9b0'}`,
+                        background: ok ? '#e7f6ed' : '#fff5eb',
+                      }}>
+                        <div style={{ fontWeight: 800 }}>Semaine S{s.numero}</div>
+                        <div className="bloc-note">
+                          validation le {new Date(s.dateFin).toLocaleDateString('fr-FR')}
+                          {s.cloturee && ' · clôturée'}
+                        </div>
+                        <div style={{ marginTop: 8, fontWeight: 700, color: ok ? '#1f8a4c' : '#b35c00' }}>
+                          {ok ? `${s.nbObjectifs} objectif(s) défini(s)` : 'objectif à définir'}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <FormulaireSaisie
+              semaines={JSON.parse(JSON.stringify(ouvertes))}
+              moi={{ id: moi.id, nom: moi.nom }}
+            />
+          </>
+        )}
+      </div>
+    </Shell>
   );
 }
