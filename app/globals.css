@@ -150,3 +150,20 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--orange);outline-
 .connexion{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#111;padding:24px}
 .connexion-carte{background:#fff;border-radius:16px;padding:34px 32px;width:100%;max-width:400px}
 .connexion-logo{width:56px;height:56px;object-fit:contain;margin-bottom:18px}
+
+/* ============ Rapport imprimable (PDF) ============ */
+.rapport{max-width:1120px;margin:0 auto;padding:28px 26px 60px;background:#fff;min-height:100vh}
+.rapport-entete{border-bottom:3px solid var(--orange);padding-bottom:14px;margin-bottom:20px}
+.rapport-table{width:100%;border-collapse:collapse;margin-bottom:10px}
+.rapport-table thead th{background:#111;color:#fff;font-size:11.5px;text-align:left;padding:9px 10px}
+.rapport-table tbody td{border-bottom:1px solid #e6e8ec;padding:9px 10px;font-size:12px;vertical-align:top}
+.rapport-table tbody tr:nth-child(even){background:#fafafa}
+.rapport-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:22px}
+.rapport-kpi{border-left:5px solid var(--orange);padding:14px 16px;background:#f7f8fa}
+.rapport-kpi .v{font-size:24px;font-weight:800}
+.rapport-kpi .l{font-size:12px;color:var(--gris-500);margin-top:4px}
+@media print{
+  .rapport{padding:0;max-width:none}
+  .rapport-table{page-break-inside:auto}
+  .rapport-table tr{page-break-inside:avoid}
+}

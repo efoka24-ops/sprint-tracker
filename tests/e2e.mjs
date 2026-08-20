@@ -9,7 +9,7 @@
  */
 const BASE = process.env.BASE || 'http://localhost:3000';
 const ADMIN = {
-  email: process.env.SUPER_ADMIN_EMAIL || 'emm.foka@gmail.com',
+  email: process.env.SUPER_ADMIN_EMAIL || 'emmanuel.foka@orange.com',
   motDePasse: process.env.SUPER_ADMIN_PASSWORD || 'SprintTracker2026!',
 };
 
@@ -180,6 +180,27 @@ async function main() {
   check('Export CSV : colonne ID Perfit présente', String(csv.body).includes('ID Perfit'));
   check('Export CSV refusé à un anonyme (401)', (await anon.req(`/api/export?semaineId=${s1.id}`)).status === 401);
 
+  // 12b — Exports PPTX et rapport imprimable
+  const pptx = await admin.req(`/api/rapport/pptx?semaineId=${s1.id}`);
+  check('Export PPTX généré', pptx.status === 200, `status ${pptx.status}`);
+  const rapport = await admin.req(`/rapport?semaine=${s1.id}`);
+  check('Rapport imprimable (PDF) accessible', rapport.status === 200 && String(rapport.body).includes('Bilan capacité'));
+  check('Export PPTX refusé à un anonyme (401)', (await anon.req(`/api/rapport/pptx?semaineId=${s1.id}`)).status === 401);
+
+  // 12c — La modification d’une tâche par le dév est visible sur le tableau de bord partagé
+  const majTache = await dev.req('/api/entrees', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: entreeId, semaineId: s2.id, ticket: '#9999', projet: 'Test auto modifié',
+      objectif: 'Objectif revu par le développeur', capaciteH: 20, reelH: 19, execution: 'EXECUTE',
+    }),
+  });
+  check('Le développeur modifie sa tâche',
+    majTache.status === 200 && majTache.body.projet === 'Test auto modifié', JSON.stringify(majTache.body).slice(0, 140));
+  const dashPartage = await admin.req(`/?semaine=${s2.id}`);
+  check('La modification apparaît sur le tableau de bord partagé',
+    String(dashPartage.body).includes('Objectif revu par le développeur'));
+
   // 13 — Révocation : la désactivation coupe la session en cours
   check('Le super admin désactive le compte',
     (await admin.req(`/api/utilisateurs/${devCree.id}`, { method: 'PATCH', body: JSON.stringify({ actif: false }) })).status === 200);
@@ -209,6 +230,23 @@ async function main() {
   });
   check('Le Scrum Master crée un membre de sa squad', membre.status === 200 && membre.body.squadId === squadCreee.body.id, JSON.stringify(membre.body).slice(0, 140));
 
+  const devMembre = session();
+  await devMembre.connexion(membre.body.email, membre.body.motDePasseProvisoire);
+  await devMembre.req('/api/auth', { method: 'PATCH', body: JSON.stringify({ ancien: membre.body.motDePasseProvisoire, nouveau: 'DevSquad2026' }) });
+
+  // 15b — Mon compte : chaque utilisateur change lui-même son mot de passe
+  const pageCompte = await devMembre.req('/moncompte');
+  check('La page « Mon compte » est accessible au développeur',
+    pageCompte.status === 200 && String(pageCompte.body).includes('Changer mon mot de passe'), `status ${pageCompte.status}`);
+  check('Ancien mot de passe faux refusé (401)',
+    (await devMembre.req('/api/auth', { method: 'PATCH', body: JSON.stringify({ ancien: 'nimportequoi', nouveau: 'NouveauMdp2026' }) })).status === 401);
+  check('Le développeur change lui-même son mot de passe',
+    (await devMembre.req('/api/auth', { method: 'PATCH', body: JSON.stringify({ ancien: 'DevSquad2026', nouveau: 'NouveauMdp2026' }) })).status === 200);
+  check('Le nouveau mot de passe permet de se reconnecter',
+    (await session().connexion(membre.body.email, 'NouveauMdp2026')).status === 200);
+  check('L’ancien mot de passe ne fonctionne plus (401)',
+    (await session().connexion(membre.body.email, 'DevSquad2026')).status === 401);
+
   check('Le Scrum Master ne peut pas nommer un super admin (403)',
     (await sm.req('/api/utilisateurs', { method: 'POST', body: JSON.stringify({ nom: `X ${marque}`, email: `x.${marque}@o.cm`, role: 'SUPER_ADMIN' }) })).status === 403);
   check('Le Scrum Master ne peut pas nommer un autre Scrum Master (403)',
@@ -233,6 +271,7 @@ async function main() {
   // Nettoyage de la délégation
   await sm.req(`/api/utilisateurs/${membre.body.id}`, { method: 'DELETE' });
   await admin.req(`/api/utilisateurs/${smCree.body.id}`, { method: 'DELETE' });
+
 
   // 14 — Nettoyage
   await admin.req(`/api/entrees/${entreeId}`, { method: 'DELETE' });

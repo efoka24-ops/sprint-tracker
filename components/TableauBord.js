@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { STATUTS } from '@/lib/constants';
 import { initiales } from '@/components/Shell';
@@ -22,7 +22,15 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
   const [vue, setVue] = useState(VUES[0]);
   const [lignes, setLignes] = useState(semaine.entrees);
   const [cloturee, setCloturee] = useState(semaine.cloturee);
-  const [erreur, setErreur] = useState('');
+  const [erreur, setErreur] = useState();
+
+  // Le tableau est partagé : on va rechercher les saisies des développeurs
+  // toutes les 30 s pour que la squad voie les mises à jour en direct.
+  useEffect(() => {
+    const t = setInterval(() => router.refresh(), 30000);
+    return () => clearInterval(t);
+  }, [router]);
+  useEffect(() => { setLignes(semaine.entrees); setCloturee(semaine.cloturee); }, [semaine]);
 
   const capaciteTotale = semaine.capacite || lignes.reduce((s, e) => s + e.capaciteH, 0);
 
@@ -123,6 +131,8 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
               </option>
             ))}
           </select>
+
+          <a className="btn ghost" href={`/rapport?semaine=${semaine.id}`}>Rapport PDF / PPTX</a>
 
           <div className="puce-capacite"><span style={{ fontSize: 15 }}>⚡</span>{capaciteTotale} h capacité</div>
 
@@ -232,6 +242,13 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
                           {e.idPerfit && <span style={{ color: '#8c9099', fontWeight: 400 }}> · Perfit {e.idPerfit}</span>}
                         </div>
                         <div className="sujet-objectif">{e.objectif}</div>
+                        {e.updatedAt && (
+                          <div className="sujet-objectif" style={{ color: "#a2a7ae" }}>
+                            mis à jour le {new Date(e.updatedAt).toLocaleString("fr-FR", {
+                              day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                            })}
+                          </div>
+                        )}
                       </div>
                       <div className="c" style={{ fontSize: 13.5, fontWeight: 700 }}>{e.capaciteH ? `${e.capaciteH} h` : '—'}</div>
                       <div className="c" style={{ fontSize: 13.5, color: '#7b828c' }}>{e.reelH != null ? `${e.reelH} h` : '—'}</div>
