@@ -195,7 +195,8 @@ npm run dev                                   # terminal 1
 BASE=http://localhost:3000 npm run test:e2e   # terminal 2
 ```
 
-Resultat attendu : `69 tests OK - 0 en echec`. La suite tourne aussi contre la
+Resultat attendu : `82 tests OK - 0 en echec`. Les regles de calendrier ont
+leur propre suite unitaire : `npm run test:calendrier` (24 tests, sans serveur). La suite tourne aussi contre la
 production en passant `BASE=https://<votre-domaine>`.
 
 ## Exports du rapport
@@ -231,9 +232,39 @@ adresses Orange. Les comptes existants conservent leur mot de passe.
 node --env-file=.env.local prisma/comptes-equipe.mjs
 ```
 
+## Calendrier : periode, feries et conges
+
+Un sprint se cree en donnant une **periode**, pas un nombre de semaines :
+
+1. La periode est decoupee en semaines de revue (lundi -> vendredi ; la premiere
+   commence a la date reelle de debut, la derniere s arrete a la date de fin).
+2. Pour chaque semaine, la capacite est **calculee** :
+   `membres actifs x (jours ouvres - feries - jours de conge) x heures par jour`.
+   Les heures par jour sont reglees par squad (8 h par defaut).
+3. Toute modification du calendrier (ajout d un ferie, declaration d un conge,
+   arrivee ou depart d un membre) declenche le recalcul des sprints ouverts.
+
+Exemple : 5 membres, semaine pleine -> 5 x 5 x 8 = 200 h ; un jour ferie en
+semaine ramene a 160 h ; une semaine de conge pour un membre retire 40 h.
+
+Les feries nationaux camerounais (dates fixes + feries chretiens mobiles calcules
+depuis Paques) se pre-remplissent en un clic depuis la console. Les fetes
+musulmanes, annoncees chaque annee, s ajoutent a la main. Un ferie propre a une
+squad est possible ; un ferie national vaut pour toutes.
+
+Plusieurs sprints peuvent coexister, y compris en parallele entre squads. Au sein
+d une meme squad, deux sprints ne peuvent pas se chevaucher.
+
+Recalcul manuel de toutes les capacites (apres une reprise de donnees) :
+
+```bash
+npm run db:recalculer
+```
+
 ## Rythme de fonctionnement
 
-- Un sprint = 3 semaines ; chaque developpeur definit son objectif pour chaque semaine.
+- Un sprint = une periode decoupee en semaines de revue (3 par defaut) ; chaque
+  developpeur definit son objectif pour chaque semaine.
 - Chaque vendredi, le Scrum Master ou le Tech Lead ouvre `/reunion`, coche les
   objectifs atteints, cloture la semaine et exporte le CSV : 3 points de validation
   par sprint.

@@ -12,7 +12,9 @@
     "local:setup": "prisma generate --schema prisma/schema.local.prisma && prisma db push --schema prisma/schema.local.prisma --skip-generate && node --env-file=.env.local prisma/seed.mjs",
     "local:dev": "next dev",
     "prod:generate": "prisma generate",
-    "test:e2e": "node tests/e2e.mjs"
+    "test:e2e": "node tests/e2e.mjs",
+    "test:calendrier": "node tests/calendrier.mjs",
+    "db:recalculer": "node --env-file=.env.local prisma/recalculer.mjs"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"

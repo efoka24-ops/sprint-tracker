@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut } from '@/lib/roles';
+import { decouperEnSemaines, jour } from '@/lib/calendrier';
+import { recalculerCapacites } from '@/lib/capacite';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,22 +16,38 @@ export async function GET() {
   return NextResponse.json(
     await prisma.sprint.findMany({
       where,
-      orderBy: { numero: 'desc' },
+      orderBy: [{ dateDebut: 'desc' }],
       include: { semaines: { orderBy: { numero: 'asc' } }, squad: { select: { id: true, nom: true } } },
     }),
   );
 }
 
-/** Crée un sprint et génère automatiquement ses N semaines (lundi → vendredi). */
+/**
+ * On donne une période ; les semaines de revue en sont déduites (lundi → vendredi,
+ * la dernière s'arrêtant à la date de fin), puis la capacité de chaque semaine est
+ * calculée d'après les jours ouvrés, les fériés et les congés de la squad.
+ * Plusieurs sprints peuvent coexister, y compris entre squads différentes.
+ */
 export async function POST(req) {
   const moi = await utilisateurCourant();
   if (!peut(moi, 'sprint.creer')) {
     return NextResponse.json({ error: 'Réservé au super admin et aux Scrum Masters' }, { status: 403 });
   }
 
-  const { numero, dateDebut, nbSemaines = 3, capaciteTotale = 600, squadId } = await req.json();
-  if (!numero || !dateDebut) {
-    return NextResponse.json({ error: 'Numéro et date de début requis' }, { status: 400 });
+  const { numero, dateDebut, dateFin, squadId } = await req.json();
+  if (!numero || !dateDebut || !dateFin) {
+    return NextResponse.json({ error: 'Numéro, date de début et date de fin requis' }, { status: 400 });
+  }
+
+  const debut = jour(dateDebut);
+  const fin = jour(dateFin);
+  if (fin < debut) {
+    return NextResponse.json({ error: 'La date de fin précède la date de début' }, { status: 400 });
+  }
+
+  const semaines = decouperEnSemaines(debut, fin);
+  if (!semaines.length) {
+    return NextResponse.json({ error: 'La période ne contient aucune semaine' }, { status: 400 });
   }
 
   // Un Scrum Master crée toujours pour sa propre squad.
@@ -42,27 +60,34 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Cette squad a déjà un sprint portant ce numéro' }, { status: 409 });
   }
 
-  const debut = new Date(dateDebut);
-  const semaines = [];
-  for (let i = 0; i < nbSemaines; i++) {
-    const d = new Date(debut); d.setDate(debut.getDate() + i * 7);
-    const f = new Date(d); f.setDate(d.getDate() + 4); // vendredi
-    semaines.push({
-      numero: i + 1, dateDebut: d, dateFin: f,
-      capacite: Math.round(capaciteTotale / nbSemaines),
-    });
+  // Chevauchement : deux sprints d'une même squad ne doivent pas se recouvrir.
+  const chevauche = await prisma.sprint.findFirst({
+    where: { squadId: squadCible, dateDebut: { lte: fin }, dateFin: { gte: debut } },
+  });
+  if (chevauche) {
+    return NextResponse.json(
+      { error: `Période en conflit avec ${chevauche.libelle} (${chevauche.dateDebut.toISOString().slice(0, 10)} → ${chevauche.dateFin.toISOString().slice(0, 10)})` },
+      { status: 409 },
+    );
   }
 
   const sprint = await prisma.sprint.create({
     data: {
       numero: Number(numero),
       libelle: `Sprint #${String(numero).padStart(2, '0')}`,
-      dateDebut: debut, dateFin: semaines[semaines.length - 1].dateFin,
-      nbSemaines: Number(nbSemaines), capaciteTotale: Number(capaciteTotale),
+      dateDebut: debut, dateFin: fin,
+      nbSemaines: semaines.length,
       squadId: squadCible,
       semaines: { create: semaines },
     },
-    include: { semaines: true, squad: { select: { id: true, nom: true } } },
   });
-  return NextResponse.json(sprint);
+
+  await recalculerCapacites(sprint.id);
+
+  return NextResponse.json(
+    await prisma.sprint.findUnique({
+      where: { id: sprint.id },
+      include: { semaines: { orderBy: { numero: 'asc' } }, squad: { select: { id: true, nom: true } } },
+    }),
+  );
 }

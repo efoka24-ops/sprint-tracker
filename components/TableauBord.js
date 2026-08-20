@@ -44,9 +44,11 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
   const modifierCapacite = async () => {
     if (!droits.cloturer) return;
     const saisie = prompt(
-      `Capacité allouée à la semaine S${semaine.numero} (heures).
+      `Capacité de la semaine S${semaine.numero} en heures.
 ` +
-      `Répartition automatique : ${semaine.sprint.capaciteTotale} h de sprint ÷ ${semaine.sprint.nbSemaines} semaines.`,
+      `Valeur calculée : ${semaine.joursOuvres ?? 5} jour(s) ouvré(s) × membres actifs, congés et fériés déduits.
+` +
+      `Une saisie manuelle sera écrasée au prochain recalcul (congé, férié, arrivée d un membre).`,
       String(capaciteAllouee),
     );
     if (saisie === null) return;
@@ -162,7 +164,11 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
           <div
             className="puce-capacite"
             onClick={modifierCapacite}
-            title={droits.cloturer ? "Cliquer pour ajuster la capacité allouée" : "Capacité allouée à la semaine"}
+            title={
+              `Capacité calculée : ${semaine.joursOuvres ?? 5} jour(s) ouvré(s) sur la semaine, ` +
+              `hors jours fériés et congés` +
+              (droits.cloturer ? " — cliquer pour forcer une autre valeur" : "")
+            }
             style={{
               cursor: droits.cloturer ? "pointer" : "default",
               ...(capaciteDeclaree > capaciteAllouee && capaciteAllouee
@@ -171,7 +177,7 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
             }}
           >
             <span style={{ fontSize: 15 }}>⚡</span>
-            {capaciteDeclaree} h engagées / {capaciteAllouee} h allouées
+            {capaciteDeclaree} h engagées / {capaciteAllouee} h disponibles
           </div>
 
           {droits.cloturer && (

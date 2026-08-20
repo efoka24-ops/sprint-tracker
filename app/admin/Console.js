@@ -3,6 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ROLES, MATRICE } from '@/lib/roles';
+import Calendrier from './Calendrier';
+
+const DANS = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+};
 
 const DEMAIN = () => {
   const d = new Date();
@@ -27,7 +34,7 @@ export default function ConsoleAdmin({
     squadId: moi.squadId ?? '',
   });
   const [nomSquad, setNomSquad] = useState('');
-  const [sprint, setSprint] = useState({ numero: '', dateDebut: DEMAIN(), nbSemaines: 3, capaciteTotale: 600 });
+  const [sprint, setSprint] = useState({ numero: '', dateDebut: DEMAIN(), dateFin: DANS(20) });
 
   const appel = async (url, opts) => {
     const r = await fetch(url, {
@@ -83,8 +90,7 @@ export default function ConsoleAdmin({
     const d = await appel('/api/sprints', {
       method: 'POST',
       body: JSON.stringify({
-        numero: Number(sprint.numero), dateDebut: sprint.dateDebut,
-        nbSemaines: Number(sprint.nbSemaines), capaciteTotale: Number(sprint.capaciteTotale),
+        numero: Number(sprint.numero), dateDebut: sprint.dateDebut, dateFin: sprint.dateFin,
         ...(moi.global && nouveau.squadId ? { squadId: nouveau.squadId } : {}),
       }),
     });
@@ -92,7 +98,7 @@ export default function ConsoleAdmin({
     if (!d) return;
     setSprints([d, ...sprints]);
     setSprint({ ...sprint, numero: '' });
-    setMsg({ t: 'ok', m: `${d.libelle} créé avec ${d.semaines.length} semaines.` });
+    setMsg({ t: 'ok', m: `${d.libelle} créé : ${d.semaines.length} semaine(s) de revue, ${d.capaciteTotale} h de capacité calculée.` });
     router.refresh();
   };
 
@@ -308,12 +314,20 @@ export default function ConsoleAdmin({
         </div>
       </div>
 
+      {/* ---- Calendrier : feries et conges ---- */}
+      <Calendrier
+        membres={comptes.filter((c) => c.actif && c.role !== 'OBSERVATEUR').map((c) => ({ id: c.id, nom: c.nom }))}
+        global={moi.global}
+      />
+
       {/* ---- Sprints ---- */}
       <form className="carte-blanche" onSubmit={creerSprint}>
         <div className="bloc-titre" style={{ marginBottom: 6 }}>Créer un sprint</div>
         <p className="bloc-note" style={{ marginBottom: 18 }}>
-          Les semaines sont générées automatiquement, chacune se terminant un vendredi
-          {maSquad ? ` — pour la squad ${maSquad.nom}.` : '.'}
+          Donnez la période : les semaines de revue sont découpées automatiquement (revue le
+          vendredi ou le dernier jour ouvré), et la capacité de chaque semaine est calculée
+          d’après les jours ouvrés, les jours fériés et les congés
+          {maSquad ? ` de la squad ${maSquad.nom}.` : ' de la squad.'}
         </p>
         <div className="row">
           <div style={{ flex: 1 }} className="field">
@@ -322,19 +336,14 @@ export default function ConsoleAdmin({
               onChange={(e) => setSprint({ ...sprint, numero: e.target.value })} required />
           </div>
           <div style={{ flex: 1.4 }} className="field">
-            <label>Date de début (lundi)</label>
+            <label>Date de début</label>
             <input type="date" value={sprint.dateDebut}
               onChange={(e) => setSprint({ ...sprint, dateDebut: e.target.value })} required />
           </div>
-          <div style={{ flex: 1 }} className="field">
-            <label>Semaines</label>
-            <input type="number" min="1" max="6" value={sprint.nbSemaines}
-              onChange={(e) => setSprint({ ...sprint, nbSemaines: e.target.value })} required />
-          </div>
-          <div style={{ flex: 1.2 }} className="field">
-            <label>Capacité équipe (h)</label>
-            <input type="number" min="1" value={sprint.capaciteTotale}
-              onChange={(e) => setSprint({ ...sprint, capaciteTotale: e.target.value })} required />
+          <div style={{ flex: 1.4 }} className="field">
+            <label>Date de fin</label>
+            <input type="date" value={sprint.dateFin}
+              onChange={(e) => setSprint({ ...sprint, dateFin: e.target.value })} required />
           </div>
           <div className="field"><button className="btn" disabled={busy || sansSquad}>Créer le sprint</button></div>
         </div>
@@ -352,7 +361,7 @@ export default function ConsoleAdmin({
           <div className="scroll">
             <table>
               <thead>
-                <tr><th>Semaine</th><th>Début</th><th>Vendredi de validation</th><th className="num">Capacité</th><th>État</th></tr>
+                <tr><th>Semaine</th><th>Début</th><th>Revue</th><th className="num">Jours ouvrés</th><th className="num">Capacité</th><th>État</th></tr>
               </thead>
               <tbody>
                 {sprints[0].semaines.map((s) => (
@@ -360,6 +369,7 @@ export default function ConsoleAdmin({
                     <td>S{s.numero}</td>
                     <td>{new Date(s.dateDebut).toLocaleDateString('fr-FR')}</td>
                     <td>{new Date(s.dateFin).toLocaleDateString('fr-FR')}</td>
+                    <td className="num">{s.joursOuvres}</td>
                     <td className="num">{s.capacite} h</td>
                     <td>{s.cloturee ? 'Clôturée' : 'Ouverte'}</td>
                   </tr>

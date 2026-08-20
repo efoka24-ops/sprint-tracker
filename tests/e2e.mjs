@@ -104,7 +104,7 @@ async function main() {
   check('Le développeur ne peut pas créer de compte (403)',
     (await dev.req('/api/utilisateurs', { method: 'POST', body: JSON.stringify({ nom: 'X', email: `x.${marque}@o.cm`, role: 'DEVELOPPEUR' }) })).status === 403);
   check('Le développeur ne peut pas créer de sprint (403)',
-    (await dev.req('/api/sprints', { method: 'POST', body: JSON.stringify({ numero: 42, dateDebut: '2026-10-05' }) })).status === 403);
+    (await dev.req('/api/sprints', { method: 'POST', body: JSON.stringify({ numero: 42, dateDebut: '2026-10-05', dateFin: '2026-10-23' }) })).status === 403);
   const admDev = await dev.req('/admin');
   check('La page /admin lui affiche un refus explicite', String(admDev.body).includes('réservé au super admin'));
 
@@ -164,15 +164,72 @@ async function main() {
     })).status === 403);
   await admin.req(`/api/semaines/${s2.id}`, { method: 'PATCH', body: JSON.stringify({ cloturee: false }) });
 
-  // 11 — Création d'un sprint : 3 semaines finissant un vendredi
+  // 11 — Création d'un sprint : période découpée en semaines de revue
+  // Les executions precedentes ont pu laisser des sprints de test : on repart propre.
+  for (const s of (await admin.req('/api/sprints')).body.filter((s) => s.numero >= 700)) {
+    await admin.req(`/api/sprints/${s.id}`, { method: 'DELETE' });
+  }
+  for (const f of (await admin.req('/api/feries?annee=2026')).body.filter((f) => f.libelle.startsWith('Férié test'))) {
+    await admin.req(`/api/feries/${f.id}`, { method: 'DELETE' });
+  }
+  for (const c of (await admin.req('/api/conges?depuis=2026-01-01')).body.filter((c) => c.motif === 'Congé test')) {
+    await admin.req(`/api/conges/${c.id}`, { method: 'DELETE' });
+  }
+
   const nouveauSprint = await admin.req('/api/sprints', {
     method: 'POST',
-    body: JSON.stringify({ numero: 900 + (marque % 90), dateDebut: '2026-09-07', nbSemaines: 3, capaciteTotale: 600 }),
+    body: JSON.stringify({ numero: 900 + (marque % 90), dateDebut: '2026-11-02', dateFin: '2026-11-20' }),
   });
-  check('Le super admin crée un sprint de 3 semaines',
+  check('Le super admin crée un sprint sur une période de 3 semaines',
     nouveauSprint.status === 200 && nouveauSprint.body.semaines?.length === 3, JSON.stringify(nouveauSprint.body).slice(0, 140));
   check('Chaque semaine se termine un vendredi',
     nouveauSprint.body.semaines?.every((s) => new Date(s.dateFin).getUTCDay() === 5));
+
+
+  // 11b — Découpage automatique et capacité calculée
+  const capaciteS1 = nouveauSprint.body.semaines?.[0]?.capacite;
+  check('La capacité de la semaine est calculée, pas divisée',
+    Number.isInteger(capaciteS1) && capaciteS1 >= 0, `capacité ${capaciteS1}`);
+  check('Les jours ouvrés de la semaine sont enregistrés',
+    nouveauSprint.body.semaines?.[0]?.joursOuvres === 5, `${nouveauSprint.body.semaines?.[0]?.joursOuvres} jours`);
+  check('Une période sans date de fin est refusée (400)',
+    (await admin.req('/api/sprints', { method: 'POST', body: JSON.stringify({ numero: 800, dateDebut: '2026-11-02' }) })).status === 400);
+  check('Une fin antérieure au début est refusée (400)',
+    (await admin.req('/api/sprints', { method: 'POST', body: JSON.stringify({ numero: 801, dateDebut: '2026-11-20', dateFin: '2026-11-02' }) })).status === 400);
+  check('Deux sprints d’une même squad ne se chevauchent pas (409)',
+    (await admin.req('/api/sprints', { method: 'POST', body: JSON.stringify({ numero: 802, dateDebut: '2026-11-09', dateFin: '2026-11-27' }) })).status === 409);
+
+  // 11c — Un jour férié réduit la capacité de la semaine concernée
+  const ferie = await admin.req('/api/feries', {
+    method: 'POST', body: JSON.stringify({ date: '2026-11-04', libelle: `Férié test ${marque}` }),
+  });
+  check('Le Scrum Master déclare un jour férié', ferie.status === 200, JSON.stringify(ferie.body).slice(0, 120));
+  const apresFerie = (await admin.req('/api/sprints')).body.find((s) => s.id === nouveauSprint.body.id);
+  check('La capacité de la semaine baisse après le férié',
+    apresFerie.semaines[0].capacite < capaciteS1 && apresFerie.semaines[0].joursOuvres === 4,
+    `${capaciteS1} h → ${apresFerie.semaines[0].capacite} h, ${apresFerie.semaines[0].joursOuvres} jours`);
+
+  // 11d — Un congé réduit la capacité du seul collaborateur concerné
+  const capaciteAvantConge = apresFerie.semaines[1].capacite;
+  const conge = await admin.req('/api/conges', {
+    method: 'POST',
+    // Le porteur doit appartenir a la squad du sprint pour peser sur sa capacite.
+    body: JSON.stringify({ developpeurId: dAutrui.developpeurId, dateDebut: '2026-11-09', dateFin: '2026-11-13', motif: 'Congé test' }),
+  });
+  check('Une absence est enregistrée', conge.status === 200, JSON.stringify(conge.body).slice(0, 120));
+  const apresConge = (await admin.req('/api/sprints')).body.find((s) => s.id === nouveauSprint.body.id);
+  check('Le congé d’un membre de la squad réduit la capacité de sa semaine',
+    apresConge.semaines[1].capacite < capaciteAvantConge,
+    `${capaciteAvantConge} h → ${apresConge.semaines[1].capacite} h`);
+  check('Les autres semaines ne bougent pas',
+    apresConge.semaines[2].capacite === apresFerie.semaines[2].capacite);
+
+  await admin.req(`/api/conges/${conge.body.id}`, { method: 'DELETE' });
+  await admin.req(`/api/feries/${ferie.body.id}`, { method: 'DELETE' });
+  const apresAnnulation = (await admin.req('/api/sprints')).body.find((s) => s.id === nouveauSprint.body.id);
+  check('La capacité revient à son niveau après annulation',
+    apresAnnulation.semaines[0].capacite === capaciteS1,
+    `${apresAnnulation.semaines[0].capacite} h attendu ${capaciteS1} h`);
 
   // 12 — Export CSV
   const csv = await admin.req(`/api/export?semaineId=${s1.id}`);
@@ -260,7 +317,7 @@ async function main() {
     (await sm.req(`/api/utilisateurs/${membre.body.id}`, { method: 'PATCH', body: JSON.stringify({ reinitialiserMotDePasse: true }) })).status === 200);
 
   const sprintSquad = await sm.req('/api/sprints', {
-    method: 'POST', body: JSON.stringify({ numero: 1, dateDebut: '2026-09-14', nbSemaines: 3, capaciteTotale: 300 }),
+    method: 'POST', body: JSON.stringify({ numero: 1, dateDebut: '2026-09-14', dateFin: '2026-10-02' }),
   });
   check('Le Scrum Master crée le sprint de sa squad',
     sprintSquad.status === 200 && sprintSquad.body.squadId === squadCreee.body.id, JSON.stringify(sprintSquad.body).slice(0, 140));
@@ -270,8 +327,15 @@ async function main() {
 
   // Nettoyage de la délégation
   await sm.req(`/api/utilisateurs/${membre.body.id}`, { method: 'DELETE' });
+  await sm.req(`/api/sprints/${sprintSquad.body.id}`, { method: 'DELETE' });
   await admin.req(`/api/utilisateurs/${smCree.body.id}`, { method: 'DELETE' });
 
+
+  // 13b — Un sprint sans saisie peut être supprimé
+  check('Le sprint de test est supprimé',
+    (await admin.req(`/api/sprints/${nouveauSprint.body.id}`, { method: 'DELETE' })).status === 200);
+  check('Un sprint portant des saisies n’est pas supprimable (409)',
+    (await admin.req(`/api/sprints/${sprint1.id}`, { method: 'DELETE' })).status === 409);
 
   // 14 — Nettoyage
   await admin.req(`/api/entrees/${entreeId}`, { method: 'DELETE' });

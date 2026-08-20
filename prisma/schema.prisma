@@ -8,11 +8,37 @@ datasource db {
 }
 
 model Squad {
-  id        String        @id @default(cuid())
-  nom       String        @unique
-  membres   Developpeur[]
-  sprints   Sprint[]
-  createdAt DateTime      @default(now())
+  id            String        @id @default(cuid())
+  nom           String        @unique
+  heuresParJour Float         @default(8)   // base de calcul de la capacite
+  membres       Developpeur[]
+  sprints       Sprint[]
+  feries        JourFerie[]
+  createdAt     DateTime      @default(now())
+}
+
+/** Jour ferie chome. squadId null = ferie national, valable pour toutes les squads. */
+model JourFerie {
+  id      String   @id @default(cuid())
+  date    DateTime
+  libelle String
+  squad   Squad?   @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  squadId String?
+
+  @@unique([date, squadId])
+}
+
+/** Absence dun collaborateur : retiree de sa capacite sur les semaines concernees. */
+model Conge {
+  id            String      @id @default(cuid())
+  developpeur   Developpeur @relation(fields: [developpeurId], references: [id], onDelete: Cascade)
+  developpeurId String
+  dateDebut     DateTime
+  dateFin       DateTime
+  motif         String      @default("Conge")
+  createdAt     DateTime    @default(now())
+
+  @@index([developpeurId])
 }
 
 model Developpeur {
@@ -28,6 +54,7 @@ model Developpeur {
   squad          Squad?   @relation(fields: [squadId], references: [id])
   squadId        String?
   entrees        Entree[]
+  conges         Conge[]
   createdAt      DateTime @default(now())
 }
 
@@ -37,8 +64,8 @@ model Sprint {
   libelle        String                      // "Sprint #01"
   dateDebut      DateTime
   dateFin        DateTime
-  nbSemaines     Int       @default(3)
-  capaciteTotale Int       @default(600)     // heures équipe pour le sprint
+  nbSemaines     Int       @default(3)     // nombre de semaines de revue deduites de la periode
+  capaciteTotale Int       @default(0)       // somme des capacites hebdomadaires calculees
   cloture        Boolean   @default(false)
   squad          Squad?    @relation(fields: [squadId], references: [id])
   squadId        String?
@@ -54,7 +81,8 @@ model Semaine {
   numero     Int                        // 1 = S1, 2 = S2, 3 = S3
   dateDebut  DateTime
   dateFin    DateTime                   // vendredi = point de validation
-  capacite   Int      @default(200)     // capacité équipe pour la semaine
+  capacite   Int      @default(0)       // capacite calculee : jours ouvres - feries - conges
+  joursOuvres Int     @default(5)       // jours travaillables de la semaine (hors feries)
   cloturee   Boolean  @default(false)
   entrees    Entree[]
 
