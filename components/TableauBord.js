@@ -2,20 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { STATUTS } from '@/lib/constants';
+import { STATUTS, ORDRE_STATUTS, GROUPES, estTermine } from '@/lib/constants';
+import BandePassante from '@/components/BandePassante';
 import { initiales } from '@/components/Shell';
 
-const ORDRE_STATUTS = ['NON_DEMARRE', 'EN_COURS', 'EXECUTE', 'BLOQUE'];
-
-const STYLE_STATUT = {
-  NON_DEMARRE: { label: 'Non démarré', bg: '#f0f1f3', color: '#7b828c' },
-  EN_COURS: { label: 'En cours', bg: '#fff2e3', color: '#c2680a' },
-  EXECUTE: { label: 'Exécuté', bg: '#e7f6ed', color: '#1f8a4c' },
-  BLOQUE: { label: 'Bloqué', bg: '#fdecea', color: '#c0392b' },
-};
-
 const COULEURS_AVATAR = ['#FF7900', '#111', '#5c6470', '#2e9c5a', '#8e44ad'];
-const VUES = ['Vue d’ensemble', 'Par porteur', 'Bilan capacité'];
+const VUES = ['Vue d’ensemble', 'Bande passante', 'Par porteur', 'Bilan capacité'];
 
 export default function TableauBord({ semaine, semaines, droits, moiId }) {
   const router = useRouter();
@@ -102,11 +94,9 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
     patch(e.id, { valide: !e.valide }, { valide: !e.valide });
   };
 
-  const cyclerStatut = (e) => {
-    const peutModifier = droits.modifierTous || e.developpeur.id === moiId;
-    if (!peutModifier || cloturee) return;
-    const suivant = ORDRE_STATUTS[(ORDRE_STATUTS.indexOf(e.execution) + 1) % ORDRE_STATUTS.length];
-    patch(e.id, { execution: suivant }, { execution: suivant });
+  const changerStatut = (e, statut) => {
+    if (!statut || statut === e.execution) return;
+    patch(e.id, { execution: statut }, { execution: statut });
   };
 
   const cloturer = async () => {
@@ -215,7 +205,11 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
               </div>
             </div>
 
-            {vue === 'Par porteur' ? (
+            {vue === 'Bande passante' ? (
+              <div style={{ padding: '2px 0 0' }}>
+                <BandePassante semaineId={semaine.id} />
+              </div>
+            ) : vue === 'Par porteur' ? (
               <div style={{ padding: '8px 22px 18px' }}>
                 {!parPorteur.length && <div className="vide">Aucune saisie pour cette semaine.</div>}
                 {parPorteur.map((p) => (
@@ -270,7 +264,7 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
                 {!lignes.length && <div className="vide">Aucune saisie pour cette semaine.</div>}
 
                 {lignes.map((e, i) => {
-                  const st = STYLE_STATUT[e.execution] ?? STYLE_STATUT.NON_DEMARRE;
+                  const st = STATUTS[e.execution] ?? STATUTS.NON_DEMARRE;
                   const modifiable = !cloturee && (droits.modifierTous || e.developpeur.id === moiId);
                   return (
                     <div className="lignes" key={e.id} style={{ background: i % 2 ? '#fbfbfc' : '#fff' }}>
@@ -297,14 +291,25 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
                       <div className="c" style={{ fontSize: 13.5, fontWeight: 700 }}>{e.capaciteH ? `${e.capaciteH} h` : '—'}</div>
                       <div className="c" style={{ fontSize: 13.5, color: '#7b828c' }}>{e.reelH != null ? `${e.reelH} h` : '—'}</div>
                       <div className="c">
-                        <button
-                          className={`badge${modifiable ? ' cliquable' : ''}`}
-                          style={{ background: st.bg, color: st.color }}
-                          onClick={() => cyclerStatut(e)}
-                          title={modifiable ? 'Cliquer pour changer de statut' : 'Statut porté par un autre développeur'}
-                        >
-                          {st.label}
-                        </button>
+                        {modifiable ? (
+                          <select
+                            value={e.execution}
+                            onChange={(ev) => changerStatut(e, ev.target.value)}
+                            title="Statut dans le cycle de livraison"
+                            style={{
+                              background: st.bg, color: st.color, fontWeight: 700, fontSize: 12,
+                              border: "none", borderRadius: 18, padding: "5px 8px", width: "100%",
+                            }}
+                          >
+                            {ORDRE_STATUTS.map((k) => (
+                              <option key={k} value={k} style={{ background: "#fff", color: "#111" }}>
+                                {STATUTS[k].court}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span className="badge" style={{ background: st.bg, color: st.color }}>{st.court}</span>
+                        )}
                       </div>
                       <div className="c">
                         <button
@@ -368,7 +373,7 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
 
         <div style={{ fontSize: 12.5, color: '#8c9099' }}>
           S{semaine.numero} du {df(semaine.dateDebut)} au {df(semaine.dateFin)} ·
-          {' '}validation le vendredi · statuts : {ORDRE_STATUTS.map((s) => STATUTS[s].label).join(' · ')}
+          {' '}validation le vendredi · cycle : {ORDRE_STATUTS.filter((k) => k !== 'BLOQUE').map((k) => STATUTS[k].court).join(' → ')}
         </div>
       </div>
     </>

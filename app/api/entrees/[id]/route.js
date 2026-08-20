@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { publierBdEnFond } from '@/lib/depot';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut, peutSurEntree } from '@/lib/roles';
+import { STATUTS } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,10 @@ export async function PATCH(req, { params }) {
     data.valide = !!b.valide;
   }
 
+  if ('execution' in b && !STATUTS[b.execution]) {
+    return NextResponse.json({ error: 'Statut inconnu' }, { status: 400 });
+  }
+
   const champsPorteur = ['execution', 'reelH', 'commentaire', 'blocage'].filter((k) => k in b);
   if (champsPorteur.length) {
     if (!peutSurEntree(moi, 'modifier', entree)) {
@@ -43,6 +48,16 @@ export async function PATCH(req, { params }) {
 
   if (!Object.keys(data).length) {
     return NextResponse.json({ error: 'Aucune modification demandée' }, { status: 400 });
+  }
+
+  // Chaque changement de statut est trace : c est la matiere des statistiques.
+  if (data.execution && data.execution !== entree.execution) {
+    await prisma.historiqueStatut.create({
+      data: {
+        entreeId: id, ancien: entree.execution, nouveau: data.execution,
+        auteurId: moi.id, auteurNom: moi.nom,
+      },
+    });
   }
 
   publierBdEnFond('mise à jour d’un objectif');

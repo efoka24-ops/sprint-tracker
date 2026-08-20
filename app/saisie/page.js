@@ -5,6 +5,7 @@ import { utilisateurCourant } from '@/lib/auth';
 import { peut } from '@/lib/roles';
 import Shell from '@/components/Shell';
 import FormulaireSaisie from './Formulaire';
+import Rallonges from '@/components/Rallonges';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,6 +90,8 @@ export default async function Saisie() {
               semaines={JSON.parse(JSON.stringify(ouvertes))}
               moi={{ id: moi.id, nom: moi.nom }}
             />
+
+            <Rallonges peutDecider={false} />
           </>
         )}
       </div>

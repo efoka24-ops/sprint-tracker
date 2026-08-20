@@ -101,10 +101,12 @@ model Entree {
   objectif      String                       // objectif de la semaine
   capaciteH     Float       @default(0)
   reelH         Float?
-  execution     String      @default("NON_DEMARRE") // NON_DEMARRE|EN_COURS|EXECUTE|BLOQUE
+  execution     String      @default("NON_DEMARRE") // voir lib/constants.js : workflow de livraison
   valide        Boolean     @default(false)
   commentaire   String?
   blocage       String?
+  historique    HistoriqueStatut[]
+  rallonges     Rallonge[]
   updatedAt     DateTime    @updatedAt
   createdAt     DateTime    @default(now())
 
@@ -118,4 +120,40 @@ model SyncBd {
   raison     String
   fichier    String
   commit     String?
+}
+
+/** Trace des changements de statut : sert aux statistiques par developpeur. */
+model HistoriqueStatut {
+  id        String      @id @default(cuid())
+  entree    Entree      @relation(fields: [entreeId], references: [id], onDelete: Cascade)
+  entreeId  String
+  ancien    String?
+  nouveau   String
+  auteurId  String?
+  auteurNom String?
+  date      DateTime    @default(now())
+
+  @@index([entreeId])
+  @@index([date])
+}
+
+/** Demande de rallonge : delai supplementaire accorde par le Scrum Master. */
+model Rallonge {
+  id            String   @id @default(cuid())
+  entree        Entree   @relation(fields: [entreeId], references: [id], onDelete: Cascade)
+  entreeId      String
+  heures        Float    @default(0)   // heures supplementaires demandees
+  motif         String
+  statut        String   @default("DEMANDEE") // DEMANDEE | ACCORDEE | REFUSEE
+  demandeeParId String
+  demandeeParNom String?
+  decideParId   String?
+  decideParNom  String?
+  reponse       String?
+  reporterSemaineId String?            // semaine vers laquelle le point est reporte
+  createdAt     DateTime @default(now())
+  decideeLe     DateTime?
+
+  @@index([entreeId])
+  @@index([statut])
 }

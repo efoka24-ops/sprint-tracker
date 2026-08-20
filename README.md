@@ -195,7 +195,7 @@ npm run dev                                   # terminal 1
 BASE=http://localhost:3000 npm run test:e2e   # terminal 2
 ```
 
-Resultat attendu : `93 tests OK - 0 en echec`. Les regles de calendrier ont
+Resultat attendu : `109 tests OK - 0 en echec`. Les regles de calendrier ont
 leur propre suite unitaire : `npm run test:calendrier` (24 tests, sans serveur). La suite tourne aussi contre la
 production en passant `BASE=https://<votre-domaine>`.
 
@@ -285,6 +285,47 @@ Le rapport (`/rapport`) et le PPTX comportent une courbe de burndown : reste a
 faire mesure a chaque revue hebdomadaire (heures engagees moins heures realisees
 cumulees) compare a la trajectoire ideale. L ecart est annonce en clair : sprint
 en avance, conforme ou en retard, et de combien d heures.
+
+## Cycle de livraison
+
+Le statut d un point suit le cycle reel, defini dans `lib/constants.js` :
+
+`Non demarre -> Faisabilite -> Implementation -> Test qualif -> (Retour qualif :
+correction) -> Test business -> (Retour business : correction) -> Passage en DAB
+-> CAB ACL -> CAB GO LIVE -> Live`, plus `Incident` et `Bloque`.
+
+Chaque changement est horodate et attribue a son auteur (table
+`HistoriqueStatut`) : c est la matiere des statistiques.
+
+## Bande passante
+
+L onglet « Bande passante » du tableau de bord donne, pour chaque porteur, un
+histogramme horizontal : heures consommees, heures engagees non encore
+consommees, et marge libre. La capacite de reference vient du calendrier (jours
+ouvres moins feries et conges), augmentee des rallonges accordees. Un porteur
+est annonce disponible, avec marge partielle, charge ou surcharge.
+
+## Rallonges
+
+Un developpeur dont le point n est pas livre demande une rallonge depuis sa
+saisie : heures supplementaires, motif, et report eventuel sur une autre
+semaine. Le Scrum Master ou le Tech Lead accorde (eventuellement moins d heures
+que demande) ou refuse depuis la page Reunion. Les heures accordees s ajoutent a
+la capacite du point et a la bande passante du porteur.
+
+## Espace du developpeur : Mes realisations
+
+`/mes-stats` presente, sur un sprint choisi puis en global :
+
+1. Projets en test business
+2. Projets en cours (faisabilite, implementation, test qualif)
+3. Deploiement en production (DAB, CAB ACL, CAB GO LIVE)
+4. Go live
+5. En correction qualif, en correction business, incidents, bloques
+
+plus le nombre de projets et de points portes, les heures realisees, la
+repartition dans le cycle et les derniers changements de statut. Un Scrum Master
+ou un Tech Lead peut consulter les statistiques de chaque membre de sa squad.
 
 ## Rythme de fonctionnement
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { STATUTS } from '@/lib/constants';
+import { STATUTS, ORDRE_STATUTS, estTermine } from '@/lib/constants';
 
 const VIDE = {
   id: null, ticket: '', idPerfit: '', projet: '', objectif: '',
@@ -38,6 +38,28 @@ export default function FormulaireSaisie({ semaines, moi }) {
     if (!r.ok) return setMsg({ t: 'err', m: data.error });
     setMsg({ t: 'ok', m: f.id ? 'Objectif mis à jour.' : 'Objectif enregistré.' });
     setF(VIDE); charger(); router.refresh();
+  };
+
+  const demanderRallonge = async (entree) => {
+    const heures = prompt(`Heures supplémentaires demandées pour ${entree.ticket} :`, '4');
+    if (heures === null) return;
+    const motif = prompt('Motif de la demande (le Scrum Master le verra)', '');
+    if (motif === null || !motif.trim()) return;
+    const reporter = semaines.length > 1 && confirm('Reporter aussi le point sur la semaine suivante ?');
+    const suivante = semaines.find((s) => s.id !== semaineId);
+
+    const r = await fetch('/api/rallonges', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        entreeId: entree.id, heures: Number(heures) || 0, motif,
+        ...(reporter && suivante ? { reporterSemaineId: suivante.id } : {}),
+      }),
+    });
+    const d = await r.json();
+    setMsg(r.ok
+      ? { t: 'ok', m: 'Demande de rallonge transmise au Scrum Master.' }
+      : { t: 'err', m: d.error });
+    charger();
   };
 
   const supprimer = async (id) => {
@@ -109,7 +131,7 @@ export default function FormulaireSaisie({ semaines, moi }) {
           <div style={{ flex: 1.4 }} className="field">
             <label>Exécution</label>
             <select value={f.execution} onChange={set('execution')}>
-              {Object.entries(STATUTS).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}
+              {ORDRE_STATUTS.map((k) => <option key={k} value={k}>{STATUTS[k].label}</option>)}
             </select>
           </div>
         </div>
@@ -153,6 +175,12 @@ export default function FormulaireSaisie({ semaines, moi }) {
                   commentaire: e.commentaire ?? '', blocage: e.blocage ?? '',
                 })}>Modifier</button>
               <button className="btn ghost" style={{ padding: '6px 12px' }} onClick={() => supprimer(e.id)}>Supprimer</button>
+              {!estTermine(e.execution) && (
+                <button className="btn ghost" style={{ padding: '6px 12px' }}
+                  onClick={() => demanderRallonge(e)}>
+                  Demander une rallonge
+                </button>
+              )}
             </div>
           </div>
         ))}

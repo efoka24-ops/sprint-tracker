@@ -119,7 +119,7 @@ async function main() {
     method: 'POST',
     body: JSON.stringify({
       semaineId: s2.id, ticket: '#9999', idPerfit: `PERF-${marque}`, projet: 'Test auto',
-      objectif: 'Vérifier la chaîne de saisie', capaciteH: 20, execution: 'EN_COURS',
+      objectif: 'Vérifier la chaîne de saisie', capaciteH: 20, execution: 'IMPLEMENTATION',
     }),
   });
   check('Le développeur saisit son objectif', objectif.status === 200 && objectif.body.id, JSON.stringify(objectif.body).slice(0, 140));
@@ -142,7 +142,7 @@ async function main() {
   check('Le développeur ne peut pas valider (403)',
     (await dev.req(`/api/entrees/${entreeId}`, { method: 'PATCH', body: JSON.stringify({ valide: true }) })).status === 403);
   check('Il met à jour ses propres heures réelles',
-    (await dev.req(`/api/entrees/${entreeId}`, { method: 'PATCH', body: JSON.stringify({ reelH: 18, execution: 'EXECUTE' }) })).status === 200);
+    (await dev.req(`/api/entrees/${entreeId}`, { method: 'PATCH', body: JSON.stringify({ reelH: 18, execution: 'TEST_QUALIF' }) })).status === 200);
 
   const validation = await admin.req(`/api/entrees/${entreeId}`, { method: 'PATCH', body: JSON.stringify({ valide: true }) });
   check('Le super admin coche « validé »', validation.status === 200 && validation.body.valide === true);
@@ -249,7 +249,7 @@ async function main() {
     method: 'POST',
     body: JSON.stringify({
       id: entreeId, semaineId: s2.id, ticket: '#9999', projet: 'Test auto modifié',
-      objectif: 'Objectif revu par le développeur', capaciteH: 20, reelH: 19, execution: 'EXECUTE',
+      objectif: 'Objectif revu par le développeur', capaciteH: 20, reelH: 19, execution: 'TEST_QUALIF',
     }),
   });
   check('Le développeur modifie sa tâche',
@@ -299,6 +299,59 @@ async function main() {
   check('Un sprint peut être clôturé', cloture.status === 200 && cloture.body.cloture === true);
   check('Une squad vide est supprimable',
     (await admin.req(`/api/squads/${squadJetable.body.id}`, { method: 'DELETE' })).status === 200);
+
+
+  // 12f — Workflow de livraison, bande passante et rallonges
+  check('Un statut inconnu est refusé (400)',
+    (await dev.req(`/api/entrees/${entreeId}`, { method: 'PATCH', body: JSON.stringify({ execution: 'INVENTE' }) })).status === 400);
+
+  const versBusiness = await dev.req(`/api/entrees/${entreeId}`, {
+    method: 'PATCH', body: JSON.stringify({ execution: 'TEST_BUSINESS' }),
+  });
+  check('Le développeur fait avancer son point dans le cycle',
+    versBusiness.status === 200 && versBusiness.body.execution === 'TEST_BUSINESS');
+
+  const statsDev = await dev.req('/api/stats');
+  check('Le développeur consulte ses statistiques', statsDev.status === 200 && statsDev.body.global, JSON.stringify(statsDev.body).slice(0, 120));
+  check('Les changements de statut sont historisés', statsDev.body.changements.length >= 1, `${statsDev.body.changements?.length} changement(s)`);
+  const testBusiness = statsDev.body.global.realisations.find((r) => r.cle === 'testBusiness');
+  check('La synthèse « Réalisations » compte les projets en test business', testBusiness.nombre >= 1, `${testBusiness?.nombre}`);
+  check('Un développeur ne voit pas les stats d’un autre (403)',
+    (await dev.req(`/api/stats?developpeurId=${dAutrui.developpeurId}`)).status === 403);
+  check('Le Scrum Master voit les stats de son équipe',
+    (await admin.req(`/api/stats?developpeurId=${dAutrui.developpeurId}`)).status === 200);
+
+  const bande = await admin.req(`/api/bandepassante?semaineId=${s1.id}`);
+  check('La bande passante de la semaine est calculée', bande.status === 200 && Array.isArray(bande.body.porteurs));
+  const unPorteur = bande.body.porteurs[0];
+  check('Chaque porteur a disponible, engagé, consommé et restant',
+    unPorteur && ['disponible', 'engage', 'consomme', 'restant', 'etat'].every((k) => k in unPorteur),
+    JSON.stringify(unPorteur).slice(0, 140));
+
+  const rallonge = await dev.req('/api/rallonges', {
+    method: 'POST',
+    body: JSON.stringify({ entreeId, heures: 6, motif: 'Retour qualif tardif' }),
+  });
+  check('Le développeur demande une rallonge', rallonge.status === 200 && rallonge.body.statut === 'DEMANDEE', JSON.stringify(rallonge.body).slice(0, 140));
+  check('Deux demandes en attente sur le même point sont refusées (409)',
+    (await dev.req('/api/rallonges', { method: 'POST', body: JSON.stringify({ entreeId, heures: 2, motif: 'doublon' }) })).status === 409);
+  check('Le développeur ne décide pas de sa propre rallonge (403)',
+    (await dev.req(`/api/rallonges/${rallonge.body.id}`, { method: 'PATCH', body: JSON.stringify({ decision: 'ACCORDEE' }) })).status === 403);
+
+  const capaciteAvant = (await admin.req(`/api/entrees?semaineId=${s2.id}`)).body.find((e) => e.id === entreeId).capaciteH;
+  const accord = await admin.req(`/api/rallonges/${rallonge.body.id}`, {
+    method: 'PATCH', body: JSON.stringify({ decision: 'ACCORDEE', heures: 4, reponse: 'Accordé jusqu’à vendredi' }),
+  });
+  check('Le Scrum Master accorde la rallonge', accord.status === 200 && accord.body.statut === 'ACCORDEE');
+  const apresAccord = (await admin.req(`/api/entrees?semaineId=${s2.id}`)).body.find((e) => e.id === entreeId);
+  check('Les heures accordées s’ajoutent à la capacité du point',
+    apresAccord.capaciteH === capaciteAvant + 4, `${capaciteAvant} h → ${apresAccord.capaciteH} h`);
+  check('Une demande déjà traitée ne se rejoue pas (409)',
+    (await admin.req(`/api/rallonges/${rallonge.body.id}`, { method: 'PATCH', body: JSON.stringify({ decision: 'REFUSEE' }) })).status === 409);
+
+  const pageStats = await dev.req('/mes-stats');
+  check('L’espace « Mes réalisations » est accessible',
+    pageStats.status === 200 && String(pageStats.body).includes('Réalisations'), `status ${pageStats.status}`);
 
   // 13 — Révocation : la désactivation coupe la session en cours
   check('Le super admin désactive le compte',

@@ -5,6 +5,7 @@ import { peut } from '@/lib/roles';
 import Shell from '@/components/Shell';
 import SelecteurSemaine from '@/components/SelecteurSemaine';
 import LigneValidation from './validation';
+import Rallonges from '@/components/Rallonges';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,6 +70,7 @@ export default async function ReunionPage({ searchParams }) {
             </div>
           </div>
         )}
+        {autorise && <Rallonges peutDecider />}
       </div>
     </Shell>
   );
