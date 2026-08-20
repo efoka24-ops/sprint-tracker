@@ -30,9 +30,34 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
     const t = setInterval(() => router.refresh(), 30000);
     return () => clearInterval(t);
   }, [router]);
-  useEffect(() => { setLignes(semaine.entrees); setCloturee(semaine.cloturee); }, [semaine]);
+  useEffect(() => {
+    setLignes(semaine.entrees);
+    setCloturee(semaine.cloturee);
+    setCapaciteAllouee(semaine.capacite || 0);
+  }, [semaine]);
 
-  const capaciteTotale = semaine.capacite || lignes.reduce((s, e) => s + e.capaciteH, 0);
+  const [capaciteAllouee, setCapaciteAllouee] = useState(semaine.capacite || 0);
+  const capaciteDeclaree = lignes.reduce((s, e) => s + (e.capaciteH || 0), 0);
+  // Reference des pourcentages : ce que la squad a reellement engage, a defaut l allocation.
+  const capaciteTotale = capaciteDeclaree || capaciteAllouee;
+
+  const modifierCapacite = async () => {
+    if (!droits.cloturer) return;
+    const saisie = prompt(
+      `Capacité allouée à la semaine S${semaine.numero} (heures).
+` +
+      `Répartition automatique : ${semaine.sprint.capaciteTotale} h de sprint ÷ ${semaine.sprint.nbSemaines} semaines.`,
+      String(capaciteAllouee),
+    );
+    if (saisie === null) return;
+    const valeur = Number(saisie);
+    if (!Number.isFinite(valeur) || valeur < 0) return setErreur("Capacité invalide.");
+    const r = await fetch(`/api/semaines/${semaine.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ capacite: valeur }),
+    });
+    if (r.ok) { setCapaciteAllouee(valeur); router.refresh(); } else setErreur((await r.json()).error);
+  };
 
   const stats = useMemo(() => {
     const total = lignes.length;
@@ -95,7 +120,7 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
 
   const kpis = [
     { valeur: `${stats.valides}/${stats.total}`, label: 'Objectifs validés', icone: '✔', accent: '#2e9c5a', pct: stats.pct(stats.valides) },
-    { valeur: `${stats.reel}h`, label: `Capacité consommée / ${capaciteTotale}h`, icone: '⚡', accent: '#FF7900', pct: capaciteTotale ? Math.min(100, Math.round((stats.reel / capaciteTotale) * 100)) : 0 },
+    { valeur: `${stats.reel}h`, label: `Consommé sur ${capaciteTotale} h engagées`, icone: '⚡', accent: '#FF7900', pct: capaciteTotale ? Math.min(100, Math.round((stats.reel / capaciteTotale) * 100)) : 0 },
     { valeur: String(stats.enCours), label: 'Sujets en cours', icone: '◐', accent: '#c2680a', pct: stats.pct(stats.enCours) },
     { valeur: String(stats.bloques), label: 'Sujets bloqués', icone: '⚠', accent: '#c0392b', pct: stats.pct(stats.bloques) },
   ];
@@ -134,7 +159,20 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
 
           <a className="btn ghost" href={`/rapport?semaine=${semaine.id}`}>Rapport PDF / PPTX</a>
 
-          <div className="puce-capacite"><span style={{ fontSize: 15 }}>⚡</span>{capaciteTotale} h capacité</div>
+          <div
+            className="puce-capacite"
+            onClick={modifierCapacite}
+            title={droits.cloturer ? "Cliquer pour ajuster la capacité allouée" : "Capacité allouée à la semaine"}
+            style={{
+              cursor: droits.cloturer ? "pointer" : "default",
+              ...(capaciteDeclaree > capaciteAllouee && capaciteAllouee
+                ? { background: "#fdecea", borderColor: "#f5c6c0", color: "#c0392b" }
+                : null),
+            }}
+          >
+            <span style={{ fontSize: 15 }}>⚡</span>
+            {capaciteDeclaree} h engagées / {capaciteAllouee} h allouées
+          </div>
 
           {droits.cloturer && (
             <button className="btn-cloture" onClick={cloturer}>
