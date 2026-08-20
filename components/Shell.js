@@ -7,7 +7,7 @@ const ENTREES_MENU = [
   { href: '/', label: 'Tableau de bord', icon: '◆', droit: 'dashboard.voir' },
   { href: '/saisie', label: 'Ma saisie', icon: '✎', droit: 'entree.creer.soi' },
   { href: '/reunion', label: 'Réunion vendredi', icon: '✓', droit: 'entree.valider' },
-  { href: '/admin', label: 'Administration', icon: '⚙', droit: 'compte.gerer' },
+  { href: '/admin', label: 'Administration', icon: '⚙', droit: 'compte.gerer.squad' },
 ];
 
 export function initiales(nom = '') {
@@ -25,7 +25,7 @@ export default function Shell({ utilisateur, actif, children }) {
           <Image src="/ocm.png" alt="Orange" width={38} height={38} className="side-logo" priority />
           <div>
             <div className="side-nom">Sprint Tracker</div>
-            <div className="side-sous">Squad Digital</div>
+            <div className="side-sous">{utilisateur.squad?.nom ?? 'Sans squad'}</div>
           </div>
         </div>
 

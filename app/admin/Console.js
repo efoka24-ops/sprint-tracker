@@ -10,65 +10,93 @@ const DEMAIN = () => {
   return d.toISOString().slice(0, 10);
 };
 
-export default function ConsoleAdmin({ moiId, comptesInitiaux, sprintsInitiaux }) {
+export default function ConsoleAdmin({
+  moi, rolesAttribuables, comptesInitiaux, sprintsInitiaux, squadsInitiales,
+}) {
   const router = useRouter();
   const [comptes, setComptes] = useState(comptesInitiaux);
   const [sprints, setSprints] = useState(sprintsInitiaux);
+  const [squads, setSquads] = useState(squadsInitiales);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [secret, setSecret] = useState(null); // mot de passe provisoire affiché une seule fois
+  const [secret, setSecret] = useState(null); // mot de passe provisoire, affiché une seule fois
 
-  const [nouveau, setNouveau] = useState({ nom: '', email: '', role: 'DEVELOPPEUR' });
+  const maSquad = squads.find((s) => s.id === moi.squadId);
+  const [nouveau, setNouveau] = useState({
+    nom: '', email: '', role: rolesAttribuables[rolesAttribuables.length - 1] ?? 'DEVELOPPEUR',
+    squadId: moi.squadId ?? '',
+  });
+  const [nomSquad, setNomSquad] = useState('');
   const [sprint, setSprint] = useState({ numero: '', dateDebut: DEMAIN(), nbSemaines: 3, capaciteTotale: 600 });
 
+  const appel = async (url, opts) => {
+    const r = await fetch(url, {
+      headers: opts?.body ? { 'Content-Type': 'application/json' } : undefined, ...opts,
+    });
+    const d = await r.json();
+    if (!r.ok) { setMsg({ t: 'err', m: d.error }); return null; }
+    return d;
+  };
+
   const rafraichirComptes = async () => {
-    const r = await fetch('/api/utilisateurs', { cache: 'no-store' });
-    if (r.ok) setComptes(await r.json());
+    const d = await appel('/api/utilisateurs', { cache: 'no-store' });
+    if (d) setComptes(d);
+  };
+
+  const creerSquad = async (e) => {
+    e.preventDefault();
+    setBusy(true); setMsg(null);
+    const d = await appel('/api/squads', { method: 'POST', body: JSON.stringify({ nom: nomSquad }) });
+    setBusy(false);
+    if (!d) return;
+    setSquads([...squads, { ...d, _count: { membres: 0, sprints: 0 } }]);
+    setNomSquad('');
+    setMsg({ t: 'ok', m: `Squad « ${d.nom} » créée.` });
+    router.refresh();
   };
 
   const creerCompte = async (e) => {
     e.preventDefault();
     setBusy(true); setMsg(null); setSecret(null);
-    const r = await fetch('/api/utilisateurs', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(nouveau),
+    const d = await appel('/api/utilisateurs', {
+      method: 'POST',
+      body: JSON.stringify(moi.global ? nouveau : { ...nouveau, squadId: moi.squadId }),
     });
-    const d = await r.json();
     setBusy(false);
-    if (!r.ok) return setMsg({ t: 'err', m: d.error });
-    setSecret({ nom: d.nom, email: d.email, mdp: d.motDePasseProvisoire });
-    setNouveau({ nom: '', email: '', role: 'DEVELOPPEUR' });
+    if (!d) return;
+    setSecret({ nom: d.nom, email: d.email, mdp: d.motDePasseProvisoire, role: d.role });
+    setNouveau({ ...nouveau, nom: '', email: '' });
     rafraichirComptes();
   };
 
   const modifierCompte = async (id, corps) => {
     setMsg(null); setSecret(null);
-    const r = await fetch(`/api/utilisateurs/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps),
-    });
-    const d = await r.json();
-    if (!r.ok) return setMsg({ t: 'err', m: d.error });
-    if (d.motDePasseProvisoire) setSecret({ nom: d.nom, email: d.email, mdp: d.motDePasseProvisoire });
+    const d = await appel(`/api/utilisateurs/${id}`, { method: 'PATCH', body: JSON.stringify(corps) });
+    if (!d) return;
+    if (d.motDePasseProvisoire) setSecret({ nom: d.nom, email: d.email, mdp: d.motDePasseProvisoire, role: d.role });
     rafraichirComptes();
   };
 
   const creerSprint = async (e) => {
     e.preventDefault();
     setBusy(true); setMsg(null);
-    const r = await fetch('/api/sprints', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+    const d = await appel('/api/sprints', {
+      method: 'POST',
       body: JSON.stringify({
         numero: Number(sprint.numero), dateDebut: sprint.dateDebut,
         nbSemaines: Number(sprint.nbSemaines), capaciteTotale: Number(sprint.capaciteTotale),
+        ...(moi.global && nouveau.squadId ? { squadId: nouveau.squadId } : {}),
       }),
     });
-    const d = await r.json();
     setBusy(false);
-    if (!r.ok) return setMsg({ t: 'err', m: d.error });
-    setMsg({ t: 'ok', m: `${d.libelle} créé avec ${d.semaines.length} semaines.` });
+    if (!d) return;
     setSprints([d, ...sprints]);
     setSprint({ ...sprint, numero: '' });
+    setMsg({ t: 'ok', m: `${d.libelle} créé avec ${d.semaines.length} semaines.` });
     router.refresh();
   };
+
+  const sansSquad = !moi.global && !moi.squadId;
 
   return (
     <>
@@ -80,23 +108,70 @@ export default function ConsoleAdmin({ moiId, comptesInitiaux, sprintsInitiaux }
 
       {secret && (
         <div className="carte-blanche" style={{ borderLeft: '5px solid var(--orange)' }}>
-          <div className="bloc-titre">Mot de passe provisoire de {secret.nom}</div>
+          <div className="bloc-titre">Accès de {secret.nom} — {ROLES[secret.role]?.label}</div>
           <p className="bloc-note" style={{ margin: '6px 0 12px' }}>
-            Affiché une seule fois — transmettez-le à l’intéressé, qui devra le changer à sa première connexion.
+            Mot de passe provisoire affiché une seule fois : transmettez-le à l’intéressé,
+            qui devra le changer à sa première connexion.
           </p>
-          <code style={{ fontSize: 20, fontWeight: 800, letterSpacing: 2, background: '#f1f2f4', padding: '8px 14px', borderRadius: 8 }}>
-            {secret.mdp}
-          </code>
-          <div className="bloc-note" style={{ marginTop: 10 }}>Identifiant : {secret.email}</div>
+          <div className="row" style={{ alignItems: 'center' }}>
+            <code style={{ fontSize: 20, fontWeight: 800, letterSpacing: 2, background: '#f1f2f4', padding: '8px 14px', borderRadius: 8 }}>
+              {secret.mdp}
+            </code>
+            <span className="bloc-note">identifiant : {secret.email}</span>
+          </div>
         </div>
       )}
+
+      {/* ---- Squads ---- */}
+      <div className="carte-blanche">
+        <div className="bloc-titre" style={{ marginBottom: 6 }}>
+          {moi.global ? 'Squads' : 'Ma squad'}
+        </div>
+        <p className="bloc-note" style={{ marginBottom: 16 }}>
+          {moi.global
+            ? 'Créez une squad, puis nommez-lui un Scrum Master : il constituera lui-même son équipe.'
+            : sansSquad
+              ? 'Créez votre squad pour pouvoir y ajouter vos développeurs et lancer vos sprints.'
+              : 'Vous administrez les comptes et les sprints de cette squad.'}
+        </p>
+
+        {(moi.global || sansSquad) && (
+          <form className="row" onSubmit={creerSquad} style={{ marginBottom: squads.length ? 18 : 0 }}>
+            <div style={{ flex: 2 }} className="field">
+              <label>Nom de la squad</label>
+              <input value={nomSquad} onChange={(e) => setNomSquad(e.target.value)} placeholder="Squad Digital" required />
+            </div>
+            <div className="field"><button className="btn" disabled={busy}>Créer la squad</button></div>
+          </form>
+        )}
+
+        {squads.length > 0 && (
+          <div className="scroll">
+            <table>
+              <thead><tr><th>Squad</th><th className="num">Membres</th><th className="num">Sprints</th></tr></thead>
+              <tbody>
+                {squads.map((s) => (
+                  <tr key={s.id}>
+                    <td>{s.nom}{s.id === moi.squadId && ' (la vôtre)'}</td>
+                    <td className="num">{s._count?.membres ?? '—'}</td>
+                    <td className="num">{s._count?.sprints ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* ---- Création d'un accès ---- */}
       <form className="carte-blanche" onSubmit={creerCompte}>
         <div className="bloc-titre" style={{ marginBottom: 6 }}>Donner un accès</div>
         <p className="bloc-note" style={{ marginBottom: 18 }}>
-          Le compte est créé avec un mot de passe provisoire ; le rôle détermine tous ses droits.
+          {moi.global
+            ? 'Nommez les Scrum Masters (ils créeront leur équipe) ou créez directement un membre.'
+            : 'Ajoutez un membre à votre squad : il recevra son propre tableau de bord et sa saisie.'}
         </p>
+
         <div className="row">
           <div style={{ flex: 1.2 }} className="field">
             <label>Nom du collaborateur</label>
@@ -104,74 +179,100 @@ export default function ConsoleAdmin({ moiId, comptesInitiaux, sprintsInitiaux }
           </div>
           <div style={{ flex: 1.6 }} className="field">
             <label>Email professionnel</label>
-            <input type="email" value={nouveau.email} onChange={(e) => setNouveau({ ...nouveau, email: e.target.value })} required />
+            <input type="email" value={nouveau.email}
+              onChange={(e) => setNouveau({ ...nouveau, email: e.target.value })} required />
           </div>
           <div style={{ flex: 1.2 }} className="field">
             <label>Rôle</label>
             <select value={nouveau.role} onChange={(e) => setNouveau({ ...nouveau, role: e.target.value })}>
-              {Object.entries(ROLES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}
+              {rolesAttribuables.map((k) => <option key={k} value={k}>{ROLES[k].label}</option>)}
             </select>
           </div>
-          <div className="field"><button className="btn" disabled={busy}>Créer l’accès</button></div>
+          {moi.global && (
+            <div style={{ flex: 1.3 }} className="field">
+              <label>Squad</label>
+              <select value={nouveau.squadId} onChange={(e) => setNouveau({ ...nouveau, squadId: e.target.value })}>
+                <option value="">— Sans squad —</option>
+                {squads.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
+              </select>
+            </div>
+          )}
+          <div className="field">
+            <button className="btn" disabled={busy || sansSquad}>Créer l’accès</button>
+          </div>
         </div>
-        <p className="bloc-note">{ROLES[nouveau.role].description}</p>
+        <p className="bloc-note">{ROLES[nouveau.role]?.description}</p>
+        {sansSquad && <p className="bloc-note" style={{ color: 'var(--rouge)' }}>Créez d’abord votre squad.</p>}
       </form>
 
-      {/* ---- Comptes existants ---- */}
+      {/* ---- Comptes ---- */}
       <div className="bloc">
         <div className="bloc-entete">
-          <div className="bloc-titre">Accès existants</div>
+          <div className="bloc-titre">{moi.global ? 'Tous les accès' : 'Les accès de ma squad'}</div>
           <div className="bloc-note">{comptes.filter((c) => c.actif).length} compte(s) actif(s)</div>
         </div>
         <div className="scroll">
           <table>
             <thead>
               <tr>
-                <th>Collaborateur</th><th>Email</th><th>Rôle</th><th>État</th>
-                <th>Dernière connexion</th><th className="noprint">Actions</th>
+                <th>Collaborateur</th><th>Email</th>{moi.global && <th>Squad</th>}
+                <th>Rôle</th><th>État</th><th>Dernière connexion</th><th className="noprint">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {comptes.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.nom}{c.id === moiId && ' (vous)'}</td>
-                  <td className="muted">{c.email}</td>
-                  <td style={{ minWidth: 170 }}>
-                    <select
-                      value={c.role}
-                      disabled={c.id === moiId}
-                      onChange={(e) => modifierCompte(c.id, { role: e.target.value })}
-                    >
-                      {Object.entries(ROLES).map(([k, r]) => <option key={k} value={k}>{r.label}</option>)}
-                    </select>
-                  </td>
-                  <td>
-                    <span className="badge" style={c.actif
-                      ? { background: '#e7f6ed', color: '#1f8a4c' }
-                      : { background: '#fdecea', color: '#c0392b' }}>
-                      {c.actif ? 'Actif' : 'Désactivé'}
-                    </span>
-                    {c.doitChangerMdp && <div className="bloc-note" style={{ marginTop: 4 }}>mot de passe à changer</div>}
-                  </td>
-                  <td className="muted">
-                    {c.derniereConnexion ? new Date(c.derniereConnexion).toLocaleString('fr-FR') : 'jamais'}
-                  </td>
-                  <td className="noprint">
-                    <div className="row" style={{ gap: 8 }}>
-                      <button className="btn ghost" style={{ padding: '6px 10px' }}
-                        onClick={() => modifierCompte(c.id, { reinitialiserMotDePasse: true })}>
-                        Réinitialiser
-                      </button>
-                      {c.id !== moiId && (
-                        <button className="btn ghost" style={{ padding: '6px 10px' }}
-                          onClick={() => modifierCompte(c.id, { actif: !c.actif })}>
-                          {c.actif ? 'Désactiver' : 'Réactiver'}
-                        </button>
+              {comptes.map((c) => {
+                const modifiable = c.id !== moi.id && (moi.global || rolesAttribuables.includes(c.role));
+                return (
+                  <tr key={c.id}>
+                    <td>{c.nom}{c.id === moi.id && ' (vous)'}</td>
+                    <td className="muted">{c.email}</td>
+                    {moi.global && (
+                      <td style={{ minWidth: 160 }}>
+                        <select value={c.squadId ?? ''} disabled={c.id === moi.id}
+                          onChange={(e) => modifierCompte(c.id, { squadId: e.target.value || null })}>
+                          <option value="">— Sans squad —</option>
+                          {squads.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
+                        </select>
+                      </td>
+                    )}
+                    <td style={{ minWidth: 165 }}>
+                      {modifiable ? (
+                        <select value={c.role} onChange={(e) => modifierCompte(c.id, { role: e.target.value })}>
+                          {rolesAttribuables.map((k) => <option key={k} value={k}>{ROLES[k].label}</option>)}
+                        </select>
+                      ) : (
+                        ROLES[c.role]?.label ?? c.role
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td>
+                      <span className="badge" style={c.actif
+                        ? { background: '#e7f6ed', color: '#1f8a4c' }
+                        : { background: '#fdecea', color: '#c0392b' }}>
+                        {c.actif ? 'Actif' : 'Désactivé'}
+                      </span>
+                      {c.doitChangerMdp && <div className="bloc-note" style={{ marginTop: 4 }}>mot de passe à changer</div>}
+                    </td>
+                    <td className="muted">
+                      {c.derniereConnexion ? new Date(c.derniereConnexion).toLocaleString('fr-FR') : 'jamais'}
+                    </td>
+                    <td className="noprint">
+                      <div className="row" style={{ gap: 8 }}>
+                        <button className="btn ghost" style={{ padding: '6px 10px' }}
+                          disabled={!modifiable && c.id !== moi.id}
+                          onClick={() => modifierCompte(c.id, { reinitialiserMotDePasse: true })}>
+                          Réinitialiser
+                        </button>
+                        {modifiable && (
+                          <button className="btn ghost" style={{ padding: '6px 10px' }}
+                            onClick={() => modifierCompte(c.id, { actif: !c.actif })}>
+                            {c.actif ? 'Désactiver' : 'Réactiver'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -211,7 +312,8 @@ export default function ConsoleAdmin({ moiId, comptesInitiaux, sprintsInitiaux }
       <form className="carte-blanche" onSubmit={creerSprint}>
         <div className="bloc-titre" style={{ marginBottom: 6 }}>Créer un sprint</div>
         <p className="bloc-note" style={{ marginBottom: 18 }}>
-          Les semaines sont générées automatiquement, chacune se terminant un vendredi.
+          Les semaines sont générées automatiquement, chacune se terminant un vendredi
+          {maSquad ? ` — pour la squad ${maSquad.nom}.` : '.'}
         </p>
         <div className="row">
           <div style={{ flex: 1 }} className="field">
@@ -234,14 +336,17 @@ export default function ConsoleAdmin({ moiId, comptesInitiaux, sprintsInitiaux }
             <input type="number" min="1" value={sprint.capaciteTotale}
               onChange={(e) => setSprint({ ...sprint, capaciteTotale: e.target.value })} required />
           </div>
-          <div className="field"><button className="btn" disabled={busy}>Créer le sprint</button></div>
+          <div className="field"><button className="btn" disabled={busy || sansSquad}>Créer le sprint</button></div>
         </div>
       </form>
 
       {sprints[0] && (
         <div className="bloc">
           <div className="bloc-entete">
-            <div className="bloc-titre">Dernier sprint : {sprints[0].libelle}</div>
+            <div className="bloc-titre">
+              Dernier sprint : {sprints[0].libelle}
+              {sprints[0].squad && ` · ${sprints[0].squad.nom}`}
+            </div>
             <div className="bloc-note">Capacité totale {sprints[0].capaciteTotale} h</div>
           </div>
           <div className="scroll">

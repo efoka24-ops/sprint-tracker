@@ -7,30 +7,44 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Squad {
+  id        String        @id @default(cuid())
+  nom       String        @unique
+  membres   Developpeur[]
+  sprints   Sprint[]
+  createdAt DateTime      @default(now())
+}
+
 model Developpeur {
   id             String   @id @default(cuid())
   nom            String   @unique
   email          String   @unique
   motDePasse     String                        // scrypt : sel:hash
-  role           String   @default("DEVELOPPEUR") // SUPER_ADMIN | TECH_LEAD | DEVELOPPEUR | OBSERVATEUR
+  role           String   @default("DEVELOPPEUR") // SUPER_ADMIN | SCRUM_MASTER | TECH_LEAD | DEVELOPPEUR | OBSERVATEUR
   actif          Boolean  @default(true)
-  doitChangerMdp Boolean  @default(true)       // mot de passe provisoire remis par le super admin
+  doitChangerMdp Boolean  @default(true)       // mot de passe provisoire remis par l'administrateur
   versionSession Int      @default(1)          // incrémenté pour révoquer les sessions en cours
   derniereConnexion DateTime?
+  squad          Squad?   @relation(fields: [squadId], references: [id])
+  squadId        String?
   entrees        Entree[]
   createdAt      DateTime @default(now())
 }
 
 model Sprint {
   id             String    @id @default(cuid())
-  numero         Int       @unique          // 1, 2, 3...
+  numero         Int                         // 1, 2, 3... (unique par squad)
   libelle        String                      // "Sprint #01"
   dateDebut      DateTime
   dateFin        DateTime
   nbSemaines     Int       @default(3)
   capaciteTotale Int       @default(600)     // heures équipe pour le sprint
   cloture        Boolean   @default(false)
+  squad          Squad?    @relation(fields: [squadId], references: [id])
+  squadId        String?
   semaines       Semaine[]
+
+  @@unique([squadId, numero])
 }
 
 model Semaine {

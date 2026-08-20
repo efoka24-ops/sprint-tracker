@@ -12,7 +12,7 @@ export default async function Saisie() {
   const moi = await utilisateurCourant();
   if (!moi) redirect('/connexion');
 
-  const semaines = await toutesSemaines();
+  const semaines = await toutesSemaines(moi);
   const ouvertes = semaines.filter((s) => !s.cloturee);
 
   // Un sprint = 3 semaines : on montre au développeur, semaine par semaine,

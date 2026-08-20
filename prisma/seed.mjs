@@ -43,22 +43,29 @@ const SUJETS_DEMO = [
 const sansAccent = (n) =>
   n.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, '.');
 
-async function compte(nom, email, role, motDePasse, doitChangerMdp) {
+async function compte(nom, email, role, motDePasse, doitChangerMdp, squadId) {
   const existant = await prisma.developpeur.findUnique({ where: { email } });
-  if (existant) return existant;
+  if (existant) {
+    return existant.squadId ? existant
+      : prisma.developpeur.update({ where: { id: existant.id }, data: { squadId } });
+  }
   return prisma.developpeur.create({
-    data: { nom, email, role, motDePasse: hacher(motDePasse), doitChangerMdp },
+    data: { nom, email, role, motDePasse: hacher(motDePasse), doitChangerMdp, squadId },
   });
 }
 
 async function main() {
+  const squad = await prisma.squad.upsert({
+    where: { nom: process.env.SQUAD_PAR_DEFAUT || 'Squad Digital' },
+    update: {}, create: { nom: process.env.SQUAD_PAR_DEFAUT || 'Squad Digital' },
+  });
   const demo = process.argv.includes('--demo');
 
   const email = (process.env.SUPER_ADMIN_EMAIL || 'emm.foka@gmail.com').toLowerCase();
   const mdp = process.env.SUPER_ADMIN_PASSWORD || provisoire();
   const impose = !process.env.SUPER_ADMIN_PASSWORD;
 
-  const admin = await compte(process.env.SUPER_ADMIN_NOM || 'Emmanuel FOKA', email, 'SUPER_ADMIN', mdp, impose);
+  const admin = await compte(process.env.SUPER_ADMIN_NOM || 'Emmanuel FOKA', email, 'SUPER_ADMIN', mdp, impose, squad.id);
   console.log(`Super admin : ${admin.email}`);
   if (impose) console.log(`Mot de passe provisoire (à changer à la 1re connexion) : ${mdp}`);
 
@@ -67,13 +74,13 @@ async function main() {
   const devs = { [admin.nom]: admin };
   for (const d of EQUIPE_DEMO) {
     const mdpDev = provisoire();
-    const u = await compte(d.nom, `${sansAccent(d.nom)}@orange.cm`, d.role, mdpDev, true);
+    const u = await compte(d.nom, `${sansAccent(d.nom)}@orange.cm`, d.role, mdpDev, true, squad.id);
     devs[d.nom] = u;
     console.log(`  ${u.nom} <${u.email}> — mot de passe provisoire : ${mdpDev}`);
   }
 
   const debut = new Date('2026-08-17T00:00:00.000Z');
-  let sprint = await prisma.sprint.findUnique({ where: { numero: 1 }, include: { semaines: true } });
+  let sprint = await prisma.sprint.findFirst({ where: { numero: 1, squadId: squad.id }, include: { semaines: true } });
   if (!sprint) {
     const semaines = [0, 1, 2].map((i) => {
       const d = new Date(debut); d.setDate(debut.getDate() + i * 7);
@@ -83,7 +90,7 @@ async function main() {
     sprint = await prisma.sprint.create({
       data: {
         numero: 1, libelle: 'Sprint #01', dateDebut: debut, dateFin: semaines[2].dateFin,
-        nbSemaines: 3, capaciteTotale: 600, semaines: { create: semaines },
+        nbSemaines: 3, capaciteTotale: 600, squadId: squad.id, semaines: { create: semaines },
       },
       include: { semaines: true },
     });

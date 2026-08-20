@@ -1,28 +1,31 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { utilisateurCourant, hacherMotDePasse, motDePasseProvisoire } from '@/lib/auth';
-import { peut, ROLES } from '@/lib/roles';
+import { peut, peutGererCompte, rolesAttribuables, ROLES } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
 const SANS_SECRET = {
-  id: true, nom: true, email: true, role: true, actif: true,
+  id: true, nom: true, email: true, role: true, actif: true, squadId: true,
   doitChangerMdp: true, derniereConnexion: true, createdAt: true,
+  squad: { select: { id: true, nom: true } },
 };
 
 /**
- * Actions du super admin sur un compte : changer le rôle, activer/désactiver,
- * réinitialiser le mot de passe (nouveau provisoire renvoyé une seule fois).
+ * Changer le rôle, activer/désactiver, réinitialiser le mot de passe, rattacher
+ * à une squad. Le Scrum Master n'agit que sur les membres non privilégiés de sa
+ * squad ; le super admin sur tout le monde.
  */
 export async function PATCH(req, { params }) {
   const moi = await utilisateurCourant();
-  if (!peut(moi, 'compte.gerer')) {
-    return NextResponse.json({ error: 'Réservé au super admin' }, { status: 403 });
-  }
+  if (!moi) return NextResponse.json({ error: 'Non connecté' }, { status: 401 });
 
   const { id } = await params;
   const cible = await prisma.developpeur.findUnique({ where: { id } });
   if (!cible) return NextResponse.json({ error: 'Compte introuvable' }, { status: 404 });
+  if (!peutGererCompte(moi, cible)) {
+    return NextResponse.json({ error: 'Ce compte n’est pas dans votre périmètre' }, { status: 403 });
+  }
 
   const b = await req.json();
   const data = {};
@@ -30,12 +33,26 @@ export async function PATCH(req, { params }) {
 
   if ('role' in b) {
     if (!ROLES[b.role]) return NextResponse.json({ error: 'Rôle inconnu' }, { status: 400 });
-    // Garde-fou : ne jamais laisser l'application sans super admin actif.
+    if (!rolesAttribuables(moi).includes(b.role)) {
+      return NextResponse.json(
+        { error: `Vous ne pouvez pas attribuer le rôle « ${ROLES[b.role].label} »` }, { status: 403 },
+      );
+    }
     if (cible.role === 'SUPER_ADMIN' && b.role !== 'SUPER_ADMIN' && !(await resteUnSuperAdmin(cible.id))) {
       return NextResponse.json({ error: 'Il doit rester au moins un super admin actif' }, { status: 409 });
     }
     data.role = b.role;
     data.versionSession = { increment: 1 }; // le changement de rôle s'applique immédiatement
+  }
+
+  if ('squadId' in b) {
+    if (!peut(moi, 'compte.gerer')) {
+      return NextResponse.json({ error: 'Seul le super admin déplace un compte de squad' }, { status: 403 });
+    }
+    if (b.squadId && !(await prisma.squad.findUnique({ where: { id: b.squadId } }))) {
+      return NextResponse.json({ error: 'Squad introuvable' }, { status: 404 });
+    }
+    data.squadId = b.squadId || null;
   }
 
   if ('actif' in b) {
@@ -61,14 +78,17 @@ export async function PATCH(req, { params }) {
   return NextResponse.json(provisoire ? { ...maj, motDePasseProvisoire: provisoire } : maj);
 }
 
-/** Désactivation définitive : on supprime le compte seulement s'il n'a aucune saisie. */
+/** Suppression : réservée aux comptes sans aucune saisie (sinon, désactivation). */
 export async function DELETE(_req, { params }) {
   const moi = await utilisateurCourant();
-  if (!peut(moi, 'compte.gerer')) {
-    return NextResponse.json({ error: 'Réservé au super admin' }, { status: 403 });
-  }
+  if (!moi) return NextResponse.json({ error: 'Non connecté' }, { status: 401 });
 
   const { id } = await params;
+  const cible = await prisma.developpeur.findUnique({ where: { id } });
+  if (!cible) return NextResponse.json({ error: 'Compte introuvable' }, { status: 404 });
+  if (!peutGererCompte(moi, cible)) {
+    return NextResponse.json({ error: 'Ce compte n’est pas dans votre périmètre' }, { status: 403 });
+  }
   if (id === moi.id) {
     return NextResponse.json({ error: 'Impossible de supprimer son propre compte' }, { status: 409 });
   }

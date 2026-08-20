@@ -13,7 +13,7 @@ export default async function ReunionPage({ searchParams }) {
   if (!moi) redirect('/connexion');
 
   const sp = await searchParams;
-  const [semaines, semaine] = await Promise.all([toutesSemaines(), getSemaine(sp?.semaine)]);
+  const [semaines, semaine] = await Promise.all([toutesSemaines(moi), getSemaine(sp?.semaine, moi)]);
   const autorise = peut(moi, 'entree.valider');
 
   return (

@@ -187,6 +187,53 @@ async function main() {
   check('Le compte désactivé ne peut plus se connecter (403)',
     (await session().connexion(devCree.email, 'MonMotDePasse2026')).status === 403);
 
+
+  // 15 — Délégation : le super admin nomme un Scrum Master, qui monte sa squad
+  const squadNom = `Squad Test ${marque}`;
+  const squadCreee = await admin.req('/api/squads', { method: 'POST', body: JSON.stringify({ nom: squadNom }) });
+  check('Le super admin crée une squad', squadCreee.status === 200 && squadCreee.body.id, JSON.stringify(squadCreee.body).slice(0, 140));
+
+  const smCree = await admin.req('/api/utilisateurs', {
+    method: 'POST',
+    body: JSON.stringify({ nom: `Scrum ${marque}`, email: `scrum.${marque}@orange.cm`, role: 'SCRUM_MASTER', squadId: squadCreee.body.id }),
+  });
+  check('Le super admin crée un accès Scrum Master', smCree.status === 200 && smCree.body.role === 'SCRUM_MASTER', JSON.stringify(smCree.body).slice(0, 140));
+
+  const sm = session();
+  await sm.connexion(smCree.body.email, smCree.body.motDePasseProvisoire);
+  await sm.req('/api/auth', { method: 'PATCH', body: JSON.stringify({ ancien: smCree.body.motDePasseProvisoire, nouveau: 'ScrumMaster2026' }) });
+
+  const membre = await sm.req('/api/utilisateurs', {
+    method: 'POST',
+    body: JSON.stringify({ nom: `Dev Squad ${marque}`, email: `dev.squad.${marque}@orange.cm`, role: 'DEVELOPPEUR' }),
+  });
+  check('Le Scrum Master crée un membre de sa squad', membre.status === 200 && membre.body.squadId === squadCreee.body.id, JSON.stringify(membre.body).slice(0, 140));
+
+  check('Le Scrum Master ne peut pas nommer un super admin (403)',
+    (await sm.req('/api/utilisateurs', { method: 'POST', body: JSON.stringify({ nom: `X ${marque}`, email: `x.${marque}@o.cm`, role: 'SUPER_ADMIN' }) })).status === 403);
+  check('Le Scrum Master ne peut pas nommer un autre Scrum Master (403)',
+    (await sm.req('/api/utilisateurs', { method: 'POST', body: JSON.stringify({ nom: `Y ${marque}`, email: `y.${marque}@o.cm`, role: 'SCRUM_MASTER' }) })).status === 403);
+
+  const annuaireSm = (await sm.req('/api/utilisateurs')).body;
+  check('Le Scrum Master ne voit que sa squad', annuaireSm.every((c) => c.squadId === squadCreee.body.id), `${annuaireSm.length} comptes`);
+  check('Il ne peut pas administrer un compte hors squad (403)',
+    (await sm.req(`/api/utilisateurs/${devCree.id}`, { method: 'PATCH', body: JSON.stringify({ actif: false }) })).status === 403);
+  check('Il réinitialise le mot de passe de son membre',
+    (await sm.req(`/api/utilisateurs/${membre.body.id}`, { method: 'PATCH', body: JSON.stringify({ reinitialiserMotDePasse: true }) })).status === 200);
+
+  const sprintSquad = await sm.req('/api/sprints', {
+    method: 'POST', body: JSON.stringify({ numero: 1, dateDebut: '2026-09-14', nbSemaines: 3, capaciteTotale: 300 }),
+  });
+  check('Le Scrum Master crée le sprint de sa squad',
+    sprintSquad.status === 200 && sprintSquad.body.squadId === squadCreee.body.id, JSON.stringify(sprintSquad.body).slice(0, 140));
+
+  const sprintsSm = (await sm.req('/api/sprints')).body;
+  check('Il ne voit que les sprints de sa squad', sprintsSm.every((s) => s.squadId === squadCreee.body.id), `${sprintsSm.length} sprints`);
+
+  // Nettoyage de la délégation
+  await sm.req(`/api/utilisateurs/${membre.body.id}`, { method: 'DELETE' });
+  await admin.req(`/api/utilisateurs/${smCree.body.id}`, { method: 'DELETE' });
+
   // 14 — Nettoyage
   await admin.req(`/api/entrees/${entreeId}`, { method: 'DELETE' });
   const suppression = await admin.req(`/api/utilisateurs/${devCree.id}`, { method: 'DELETE' });
