@@ -195,8 +195,41 @@ npm run dev                                   # terminal 1
 BASE=http://localhost:3000 npm run test:e2e   # terminal 2
 ```
 
-Resultat attendu : `59 tests OK - 0 en echec`. La suite tourne aussi contre la
+Resultat attendu : `69 tests OK - 0 en echec`. La suite tourne aussi contre la
 production en passant `BASE=https://<votre-domaine>`.
+
+## Exports du rapport
+
+- **PPTX** : `/api/rapport/pptx?semaineId=...` genere le support de reunion en
+  4 diapositives (couverture, objectifs par developpeur, bilan capacite, points
+  bloquants), calque sur le modele « Suivi de sprint ».
+- **PDF** : la page `/rapport` est une mise en page imprimable ; « Imprimer /
+  PDF » ouvre la boite de dialogue du navigateur (Enregistrer au format PDF).
+- **CSV** : `/api/export?semaineId=...` pour Excel.
+
+Les trois exports respectent le cloisonnement : hors super admin, on n exporte
+que les semaines de sa propre squad.
+
+## Compte personnel
+
+`/moncompte` permet a chaque utilisateur de changer son mot de passe. Les autres
+sessions ouvertes sont revoquees au changement. Le nom, l email et le role restent
+geres par le Scrum Master ou le super admin.
+
+## Suivi des modifications
+
+Chaque tache porte son horodatage « mis a jour le » sur le tableau de bord, qui se
+rafraichit automatiquement toutes les 30 secondes : quand un developpeur modifie sa
+tache ou son statut, la squad le voit sans recharger la page.
+
+## Annuaire de l equipe
+
+`prisma/comptes-equipe.mjs` cree ou met a jour les comptes de la squad avec leurs
+adresses Orange. Les comptes existants conservent leur mot de passe.
+
+```bash
+node --env-file=.env.local prisma/comptes-equipe.mjs
+```
 
 ## Rythme de fonctionnement
 
