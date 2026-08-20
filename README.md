@@ -140,43 +140,67 @@ npm run db:push
 npm run db:seed
 ```
 
-## Mode local sans PostgreSQL (SQLite)
+## Modele d acces
 
-Pour developper ou tester sans base PostgreSQL, un schema miroir SQLite est fourni
-(`prisma/schema.local.prisma`). Il n'est jamais utilise en production : Vercel deploie
-toujours `prisma/schema.prisma` (PostgreSQL).
+Deux niveaux de delegation : le super admin cree les squads et leurs Scrum Masters,
+chaque Scrum Master constitue son equipe. Le role porte tous les droits.
+
+| Action | Super admin | Scrum Master | Tech Lead | Developpeur | Observateur |
+|---|:--:|:--:|:--:|:--:|:--:|
+| Consulter le tableau de bord | oui | oui | oui | oui | oui |
+| Exporter le CSV | oui | oui | oui | oui | oui |
+| Saisir / modifier ses propres objectifs | oui | oui | oui | oui | non |
+| Modifier les objectifs de la squad | oui | oui | oui | non | non |
+| Cocher « valide » le vendredi | oui | oui | oui | non | non |
+| Cloturer une semaine | oui | oui | oui | non | non |
+| Creer un sprint | oui | oui | non | non | non |
+| Creer une squad | oui | oui | non | non | non |
+| Creer les comptes de sa squad | oui | oui | non | non | non |
+| Administrer tous les comptes et les roles | oui | non | non | non | non |
+
+Cloisonnement : un Scrum Master ne voit que sa squad (comptes, sprints, tableau de
+bord) et ne peut attribuer que les roles Tech Lead, Developpeur et Observateur.
+Le super admin voit tout et nomme les Scrum Masters.
+
+### Cycle d un acces
+
+1. Le super admin (ou le Scrum Master pour sa squad) cree le compte : nom, email, role.
+2. L application affiche **une seule fois** un mot de passe provisoire, a transmettre.
+3. A sa premiere connexion, la personne choisit son mot de passe definitif.
+4. « Reinitialiser » genere un nouveau provisoire ; « Desactiver » coupe immediatement
+   la session en cours et interdit toute reconnexion.
+
+## Mise en service
 
 ```bash
-printf 'DATABASE_URL="file:./dev.db"\nADMIN_PASSWORD="techlead2026"\n' > .env.local
-npm run local:setup   # genere le client, cree dev.db et charge le jeu de donnees
+npm install
+cp .env.example .env.local          # renseigner DATABASE_URL et AUTH_SECRET
+npx prisma db push                  # cree les tables
+node --env-file=.env.local prisma/seed.mjs          # cree le super admin
+node --env-file=.env.local prisma/seed.mjs --demo   # + squad et sprint de demonstration
 npm run dev
 ```
 
-Pour revenir au client PostgreSQL avant un deploiement :
-
-```bash
-npm run prod:generate
-```
-
-> Si `prisma generate` echoue avec `EPERM ... query_engine-windows.dll.node`,
-> un serveur `next dev` tourne encore et verrouille le moteur : arretez-le d'abord.
+Sur Vercel, renseigner `DATABASE_URL` et `AUTH_SECRET` dans les variables du projet,
+puis executer le seed une fois depuis un poste pointant sur la meme base.
 
 ## Tests fonctionnels
 
-`tests/e2e.mjs` couvre la chaine complete via HTTP : pages, saisie developpeur,
-controle des champs obligatoires, authentification Tech Lead, validation du vendredi,
-generation automatique des 3 semaines d'un sprint, export CSV et suppression.
+`tests/e2e.mjs` couvre la chaine complete via HTTP : authentification, matrice des
+droits, delegation Scrum Master, cloisonnement par squad, saisie, validation du
+vendredi, cloture de semaine, generation des 3 semaines et export CSV.
 
 ```bash
 npm run dev                                   # terminal 1
 BASE=http://localhost:3000 npm run test:e2e   # terminal 2
 ```
 
-Resultat attendu : `27 tests OK · 0 en echec`.
+Resultat attendu : `59 tests OK - 0 en echec`. La suite tourne aussi contre la
+production en passant `BASE=https://<votre-domaine>`.
 
 ## Rythme de fonctionnement
 
-- Un sprint = 3 semaines, 600 h de capacite equipe (200 h par semaine par defaut).
-- Chaque developpeur saisit son objectif en debut de semaine, puis ses heures reelles.
-- Chaque vendredi, le Tech Lead ouvre `/reunion`, coche les objectifs atteints et
-  exporte le CSV : le point de validation a donc lieu 3 fois par sprint.
+- Un sprint = 3 semaines ; chaque developpeur definit son objectif pour chaque semaine.
+- Chaque vendredi, le Scrum Master ou le Tech Lead ouvre `/reunion`, coche les
+  objectifs atteints, cloture la semaine et exporte le CSV : 3 points de validation
+  par sprint.
