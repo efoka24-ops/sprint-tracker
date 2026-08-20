@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { publierBdEnFond } from '@/lib/depot';
 import { utilisateurCourant, hacherMotDePasse, motDePasseProvisoire } from '@/lib/auth';
 import { peut, peutGererCompte, rolesAttribuables, ROLES } from '@/lib/roles';
 
@@ -30,6 +31,21 @@ export async function PATCH(req, { params }) {
   const b = await req.json();
   const data = {};
   let provisoire = null;
+
+  if (b.nom !== undefined) {
+    if (!b.nom.trim()) return NextResponse.json({ error: 'Le nom ne peut pas être vide' }, { status: 400 });
+    const homonyme = await prisma.developpeur.findFirst({ where: { nom: b.nom.trim(), id: { not: id } } });
+    if (homonyme) return NextResponse.json({ error: 'Un autre compte porte déjà ce nom' }, { status: 409 });
+    data.nom = b.nom.trim();
+  }
+
+  if (b.email !== undefined) {
+    const courriel = String(b.email).trim().toLowerCase();
+    if (!courriel.includes('@')) return NextResponse.json({ error: 'Email invalide' }, { status: 400 });
+    const pris = await prisma.developpeur.findFirst({ where: { email: courriel, id: { not: id } } });
+    if (pris) return NextResponse.json({ error: 'Cet email est déjà utilisé' }, { status: 409 });
+    data.email = courriel;
+  }
 
   if ('role' in b) {
     if (!ROLES[b.role]) return NextResponse.json({ error: 'Rôle inconnu' }, { status: 400 });
@@ -75,6 +91,7 @@ export async function PATCH(req, { params }) {
   }
 
   const maj = await prisma.developpeur.update({ where: { id }, data, select: SANS_SECRET });
+  publierBdEnFond('modification d’un compte');
   return NextResponse.json(provisoire ? { ...maj, motDePasseProvisoire: provisoire } : maj);
 }
 
@@ -102,6 +119,7 @@ export async function DELETE(_req, { params }) {
   }
 
   await prisma.developpeur.delete({ where: { id } });
+  publierBdEnFond('suppression d’un compte');
   return NextResponse.json({ ok: true });
 }
 

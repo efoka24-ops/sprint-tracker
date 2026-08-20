@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { publierBdEnFond } from '@/lib/depot';
 import { utilisateurCourant, hacherMotDePasse, motDePasseProvisoire } from '@/lib/auth';
 import { peut, rolesAttribuables, ROLES } from '@/lib/roles';
 
@@ -72,5 +73,6 @@ export async function POST(req) {
     select: SANS_SECRET,
   });
 
+  publierBdEnFond('création d’un compte');
   return NextResponse.json({ ...cree, motDePasseProvisoire: provisoire });
 }

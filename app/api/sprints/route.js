@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { publierBdEnFond } from '@/lib/depot';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut } from '@/lib/roles';
 import { decouperEnSemaines, jour } from '@/lib/calendrier';
@@ -84,6 +85,7 @@ export async function POST(req) {
 
   await recalculerCapacites(sprint.id);
 
+  publierBdEnFond('création d’un sprint');
   return NextResponse.json(
     await prisma.sprint.findUnique({
       where: { id: sprint.id },

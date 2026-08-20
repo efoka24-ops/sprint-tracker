@@ -195,7 +195,7 @@ npm run dev                                   # terminal 1
 BASE=http://localhost:3000 npm run test:e2e   # terminal 2
 ```
 
-Resultat attendu : `82 tests OK - 0 en echec`. Les regles de calendrier ont
+Resultat attendu : `93 tests OK - 0 en echec`. Les regles de calendrier ont
 leur propre suite unitaire : `npm run test:calendrier` (24 tests, sans serveur). La suite tourne aussi contre la
 production en passant `BASE=https://<votre-domaine>`.
 
@@ -260,6 +260,31 @@ Recalcul manuel de toutes les capacites (apres une reprise de donnees) :
 ```bash
 npm run db:recalculer
 ```
+
+## Base de donnees versionnee (dossier bd/)
+
+PostgreSQL est la source de verite. A chaque modification, l application
+regenere une image Excel de la base et la commite dans `bd/sprint-tracker.xlsx`
+(onglets : squads, utilisateurs, sprints, semaines, objectifs, feries, conges ;
+aucun mot de passe). Le classeur est aussi telechargeable depuis
+Administration -> Base de donnees.
+
+La publication automatique necessite la variable `GITHUB_TOKEN` (jeton avec le
+droit « Contents: write » sur le depot) et, si besoin, `GITHUB_REPO` et
+`GITHUB_BRANCHE`. Sans jeton, l application fonctionne normalement et la
+publication se fait a la main :
+
+```bash
+npm run bd:export     # ecrit bd/sprint-tracker.xlsx
+npm run bd:publier    # ecrit, commite et pousse
+```
+
+## Tendance burndown
+
+Le rapport (`/rapport`) et le PPTX comportent une courbe de burndown : reste a
+faire mesure a chaque revue hebdomadaire (heures engagees moins heures realisees
+cumulees) compare a la trajectoire ideale. L ecart est annonce en clair : sprint
+en avance, conforme ou en retard, et de combien d heures.
 
 ## Rythme de fonctionnement
 

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { utilisateurCourant } from '@/lib/auth';
-import { donneesRapport, fmt } from '@/lib/rapport';
+import { donneesRapport, burndown, fmt } from '@/lib/rapport';
+import Burndown from './Burndown';
 import { semaineCourante } from '@/lib/queries';
 import BoutonImpression from './BoutonImpression';
 
@@ -24,6 +25,7 @@ export default async function Rapport({ searchParams }) {
   }
 
   const { semaine } = r;
+  const tendance = await burndown(semaine.sprintId);
 
   return (
     <div className="rapport">
@@ -67,6 +69,8 @@ export default async function Rapport({ searchParams }) {
           )}
         </tbody>
       </table>
+
+      <Burndown donnees={tendance ? JSON.parse(JSON.stringify(tendance)) : null} />
 
       <h2 style={{ fontSize: 20, margin: '26px 0 10px' }}>Bilan capacité par développeur</h2>
       <table className="rapport-table">

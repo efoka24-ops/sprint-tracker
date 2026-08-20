@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { publierBdEnFond } from '@/lib/depot';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut, peutSurEntree } from '@/lib/roles';
 
@@ -44,6 +45,7 @@ export async function PATCH(req, { params }) {
     return NextResponse.json({ error: 'Aucune modification demandée' }, { status: 400 });
   }
 
+  publierBdEnFond('mise à jour d’un objectif');
   return NextResponse.json(
     await prisma.entree.update({
       where: { id }, data,

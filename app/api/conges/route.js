@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { publierBdEnFond } from '@/lib/depot';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut, peutGererCompte } from '@/lib/roles';
 import { jour } from '@/lib/calendrier';
@@ -59,6 +60,7 @@ export async function POST(req) {
     include: { developpeur: { select: { id: true, nom: true, squadId: true } } },
   });
 
+  publierBdEnFond('déclaration d’un congé');
   await recalculerSquad(conge.developpeur.squadId);
   return NextResponse.json(conge);
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { publierBdEnFond } from '@/lib/depot';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut } from '@/lib/roles';
 import { feriesCameroun, jour } from '@/lib/calendrier';
@@ -65,6 +66,7 @@ export async function POST(req) {
   const ferie = await prisma.jourFerie.create({
     data: { date, libelle: b.libelle.trim(), squadId: squadCible },
   });
+  publierBdEnFond('ajout d’un jour férié');
   await recalculerSquad(moi.squadId);
   return NextResponse.json(ferie);
 }

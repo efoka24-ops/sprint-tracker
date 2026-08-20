@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut } from '@/lib/roles';
 import { recalculerCapacites } from '@/lib/capacite';
+import { decouperEnSemaines, jour } from '@/lib/calendrier';
+import { publierBdEnFond } from '@/lib/depot';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,11 +34,71 @@ export async function PATCH(req, { params }) {
     return NextResponse.json({ ok: true, ...bilan });
   }
 
+  // Changement de période : on redécoupe les semaines de revue.
+  if (b.dateDebut || b.dateFin) {
+    const debut = jour(b.dateDebut ?? sprint.dateDebut);
+    const fin = jour(b.dateFin ?? sprint.dateFin);
+    if (fin < debut) {
+      return NextResponse.json({ error: 'La date de fin précède la date de début' }, { status: 400 });
+    }
+
+    const chevauche = await prisma.sprint.findFirst({
+      where: { squadId: sprint.squadId, id: { not: id }, dateDebut: { lte: fin }, dateFin: { gte: debut } },
+    });
+    if (chevauche) {
+      return NextResponse.json({ error: `Période en conflit avec ${chevauche.libelle}` }, { status: 409 });
+    }
+
+    const nouvelles = decouperEnSemaines(debut, fin);
+    const saisies = await prisma.entree.count({ where: { semaineId: { in: sprint.semaines.map((s) => s.id) } } });
+    if (saisies > 0 && nouvelles.length !== sprint.semaines.length) {
+      return NextResponse.json(
+        { error: `Ce sprint porte ${saisies} saisie(s) : la nouvelle période doit garder ${sprint.semaines.length} semaine(s)` },
+        { status: 409 },
+      );
+    }
+
+    // Les semaines existantes sont recalées ; les surnuméraires disparaissent.
+    for (const n of nouvelles) {
+      const existante = sprint.semaines.find((s) => s.numero === n.numero);
+      if (existante) {
+        await prisma.semaine.update({
+          where: { id: existante.id }, data: { dateDebut: n.dateDebut, dateFin: n.dateFin },
+        });
+      } else {
+        await prisma.semaine.create({ data: { ...n, sprintId: id } });
+      }
+    }
+    await prisma.semaine.deleteMany({
+      where: { sprintId: id, numero: { gt: nouvelles.length } },
+    });
+
+    await prisma.sprint.update({
+      where: { id }, data: { dateDebut: debut, dateFin: fin, nbSemaines: nouvelles.length },
+    });
+    await recalculerCapacites(id);
+    publierBdEnFond('modification de la période d’un sprint');
+
+    return NextResponse.json(
+      await prisma.sprint.findUnique({
+        where: { id },
+        include: { semaines: { orderBy: { numero: 'asc' } }, squad: { select: { id: true, nom: true } } },
+      }),
+    );
+  }
+
   const data = {};
   if ('cloture' in b) data.cloture = !!b.cloture;
+  if (b.numero !== undefined) {
+    const pris = await prisma.sprint.findFirst({ where: { squadId: sprint.squadId, numero: Number(b.numero), id: { not: id } } });
+    if (pris) return NextResponse.json({ error: 'Cette squad a déjà un sprint portant ce numéro' }, { status: 409 });
+    data.numero = Number(b.numero);
+    data.libelle = `Sprint #${String(b.numero).padStart(2, '0')}`;
+  }
   if (!Object.keys(data).length) {
     return NextResponse.json({ error: 'Aucune modification demandée' }, { status: 400 });
   }
+  publierBdEnFond('modification d’un sprint');
   return NextResponse.json(await prisma.sprint.update({ where: { id }, data }));
 }
 
@@ -56,5 +118,6 @@ export async function DELETE(_req, { params }) {
   }
 
   await prisma.sprint.delete({ where: { id } });
+  publierBdEnFond('suppression d’un sprint');
   return NextResponse.json({ ok: true });
 }

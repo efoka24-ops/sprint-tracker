@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { publierBdEnFond } from '@/lib/depot';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut, peutSurEntree } from '@/lib/roles';
 
@@ -50,6 +51,8 @@ export async function POST(req) {
     commentaire: b.commentaire || null,
     blocage: b.blocage || null,
   };
+
+  publierBdEnFond(b.id ? 'mise à jour d’un objectif' : 'saisie d’un objectif');
 
   if (b.id) {
     const existante = await prisma.entree.findUnique({ where: { id: b.id } });

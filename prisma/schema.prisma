@@ -110,3 +110,12 @@ model Entree {
 
   @@index([semaineId])
 }
+
+/** Journal des publications du classeur Excel dans le depot GitHub. */
+model SyncBd {
+  id         String   @id @default(cuid())
+  horodatage DateTime @default(now())
+  raison     String
+  fichier    String
+  commit     String?
+}

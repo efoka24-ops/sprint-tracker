@@ -1,7 +1,7 @@
 import PptxGenJS from 'pptxgenjs';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut } from '@/lib/roles';
-import { donneesRapport, nomFichier, fmt } from '@/lib/rapport';
+import { donneesRapport, burndown, nomFichier, fmt } from '@/lib/rapport';
 
 export const dynamic = 'force-dynamic';
 
@@ -116,7 +116,56 @@ export async function GET(req) {
     bilan.addText(c.l, { x: x + 0.2, y: 4.72, w: 2.9, fontSize: 10, color: GRIS });
   });
 
-  /* ---------- 4. Points bloquants ---------- */
+  /* ---------- 4. Tendance burndown ---------- */
+  const tendance = await burndown(semaine.sprintId);
+  if (tendance && tendance.points.length) {
+    const courbe = pptx.addSlide();
+    courbe.addText('TENDANCE DU SPRINT', { x: 0.4, y: 0.3, fontSize: 10, color: ORANGE, bold: true, charSpacing: 2 });
+    courbe.addText('Burndown : reste à faire par revue', { x: 0.4, y: 0.55, fontSize: 24, bold: true });
+
+    const couleurTendance = tendance.tendance === 'en retard' ? 'C0392B' : tendance.tendance === 'en avance' ? '1F8A4C' : ORANGE;
+    courbe.addText(
+      `${tendance.depart} h engagées · sprint ${tendance.tendance}` +
+      (tendance.ecart ? ` de ${Math.abs(tendance.ecart)} h` : ''),
+      { x: 0.4, y: 1.05, fontSize: 11, color: couleurTendance, bold: true },
+    );
+
+    const etiquettes = ['Départ', ...tendance.points.map((p) => p.semaine)];
+    courbe.addChart(
+      pptx.ChartType.line,
+      [
+        { name: 'Trajectoire idéale', labels: etiquettes, values: [tendance.depart, ...tendance.points.map((p) => p.ideal)] },
+        { name: 'Reste à faire', labels: etiquettes, values: [tendance.depart, ...tendance.points.map((p) => p.reste ?? null)] },
+      ],
+      {
+        x: 0.4, y: 1.4, w: 6.2, h: 3.6,
+        chartColors: ['C9CCD1', couleurTendance],
+        lineDataSymbol: ['none', 'circle'],
+        lineSize: [2, 3],
+        showLegend: true, legendPos: 'b', legendFontSize: 10,
+        catAxisLabelFontSize: 10, valAxisLabelFontSize: 10,
+        valAxisTitle: 'Heures restantes', showValAxisTitle: true, valAxisTitleFontSize: 10,
+      },
+    );
+
+    courbe.addTable(
+      [
+        ['Revue', 'Idéal', 'Réel', 'Écart'].map((t) => ({ text: t, options: { bold: true, color: 'FFFFFF', fill: { color: NOIR } } })),
+        ...tendance.points.map((p) => [
+          { text: p.semaine },
+          { text: `${p.ideal} h`, options: { align: 'center' } },
+          { text: p.reste === null ? '—' : `${p.reste} h`, options: { align: 'center' } },
+          {
+            text: p.reste === null ? '—' : `${p.reste - p.ideal > 0 ? '+' : ''}${p.reste - p.ideal} h`,
+            options: { align: 'center', color: p.reste !== null && p.reste > p.ideal ? 'C0392B' : '1F8A4C' },
+          },
+        ]),
+      ],
+      { x: 6.8, y: 1.4, w: 2.8, colW: [0.8, 0.68, 0.66, 0.66], fontSize: 10, border: { pt: 0.5, color: 'E6E8EC' }, valign: 'middle' },
+    );
+  }
+
+  /* ---------- 5. Points bloquants ---------- */
   const bloques = semaine.entrees.filter((e) => e.execution === 'BLOQUE');
   const suite = pptx.addSlide();
   suite.addText('POINTS D’ATTENTION', { x: 0.4, y: 0.3, fontSize: 10, color: ORANGE, bold: true, charSpacing: 2 });

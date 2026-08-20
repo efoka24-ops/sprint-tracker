@@ -14,13 +14,16 @@
     "prod:generate": "prisma generate",
     "test:e2e": "node tests/e2e.mjs",
     "test:calendrier": "node tests/calendrier.mjs",
-    "db:recalculer": "node --env-file=.env.local prisma/recalculer.mjs"
+    "db:recalculer": "node --env-file=.env.local prisma/recalculer.mjs",
+    "bd:export": "node --env-file=.env.local prisma/exporter-bd.mjs",
+    "bd:publier": "npm run bd:export && git add bd && git commit -m \"bd : mise a jour du classeur\" && git push"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
+    "exceljs": "^4.4.0",
     "next": "^15.1.6",
     "pptxgenjs": "^4.0.1",
     "react": "^19.0.0",

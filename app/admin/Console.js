@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ROLES, MATRICE } from '@/lib/roles';
 import Calendrier from './Calendrier';
+import BaseDeDonnees from './BaseDeDonnees';
 
 const DANS = (n) => {
   const d = new Date();
@@ -84,6 +85,64 @@ export default function ConsoleAdmin({
     rafraichirComptes();
   };
 
+  const modifierSquad = async (id, corps) => {
+    setMsg(null);
+    const d = await appel(`/api/squads/${id}`, { method: 'PATCH', body: JSON.stringify(corps) });
+    if (!d) return;
+    setSquads(squads.map((s) => (s.id === id ? { ...s, ...d } : s)));
+    setMsg({ t: 'ok', m: `Squad « ${d.nom} » mise à jour.` });
+    router.refresh();
+  };
+
+  const supprimerSquad = async (id, nom) => {
+    if (!confirm(`Supprimer la squad « ${nom} » ?`)) return;
+    const d = await appel(`/api/squads/${id}`, { method: 'DELETE' });
+    if (!d) return;
+    setSquads(squads.filter((s) => s.id !== id));
+    setMsg({ t: 'ok', m: `Squad « ${nom} » supprimée.` });
+    router.refresh();
+  };
+
+  const renommerCompte = async (compte) => {
+    const nom = prompt('Nom du collaborateur', compte.nom);
+    if (nom === null) return;
+    const email = prompt('Email de connexion', compte.email);
+    if (email === null) return;
+    await modifierCompte(compte.id, { nom, email });
+  };
+
+  const modifierSprint = async (sprintCible) => {
+    const dateDebut = prompt(`Début de ${sprintCible.libelle} (AAAA-MM-JJ)`, sprintCible.dateDebut.slice(0, 10));
+    if (dateDebut === null) return;
+    const dateFin = prompt(`Fin de ${sprintCible.libelle} (AAAA-MM-JJ)`, sprintCible.dateFin.slice(0, 10));
+    if (dateFin === null) return;
+    const d = await appel(`/api/sprints/${sprintCible.id}`, {
+      method: 'PATCH', body: JSON.stringify({ dateDebut, dateFin }),
+    });
+    if (!d) return;
+    setSprints(sprints.map((s) => (s.id === d.id ? d : s)));
+    setMsg({ t: 'ok', m: `${d.libelle} : ${d.semaines.length} semaine(s), ${d.capaciteTotale} h de capacité.` });
+    router.refresh();
+  };
+
+  const cloturerSprint = async (sprintCible) => {
+    const d = await appel(`/api/sprints/${sprintCible.id}`, {
+      method: 'PATCH', body: JSON.stringify({ cloture: !sprintCible.cloture }),
+    });
+    if (!d) return;
+    setSprints(sprints.map((s) => (s.id === d.id ? { ...s, cloture: d.cloture } : s)));
+    router.refresh();
+  };
+
+  const supprimerSprint = async (sprintCible) => {
+    if (!confirm(`Supprimer ${sprintCible.libelle} ? Cette action est définitive.`)) return;
+    const d = await appel(`/api/sprints/${sprintCible.id}`, { method: 'DELETE' });
+    if (!d) return;
+    setSprints(sprints.filter((s) => s.id !== sprintCible.id));
+    setMsg({ t: 'ok', m: `${sprintCible.libelle} supprimé.` });
+    router.refresh();
+  };
+
   const creerSprint = async (e) => {
     e.preventDefault();
     setBusy(true); setMsg(null);
@@ -154,13 +213,46 @@ export default function ConsoleAdmin({
         {squads.length > 0 && (
           <div className="scroll">
             <table>
-              <thead><tr><th>Squad</th><th className="num">Membres</th><th className="num">Sprints</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Squad</th><th className="num">Heures / jour</th>
+                  <th className="num">Membres</th><th className="num">Sprints</th>
+                  <th className="noprint">Actions</th>
+                </tr>
+              </thead>
               <tbody>
                 {squads.map((s) => (
                   <tr key={s.id}>
                     <td>{s.nom}{s.id === moi.squadId && ' (la vôtre)'}</td>
+                    <td className="num" style={{ minWidth: 110 }}>
+                      <input
+                        type="number" min="1" max="24" step="0.5" defaultValue={s.heuresParJour ?? 8}
+                        onBlur={(e) => {
+                          const v = Number(e.target.value);
+                          if (v && v !== (s.heuresParJour ?? 8)) modifierSquad(s.id, { heuresParJour: v });
+                        }}
+                        style={{ textAlign: "right" }}
+                      />
+                    </td>
                     <td className="num">{s._count?.membres ?? '—'}</td>
                     <td className="num">{s._count?.sprints ?? '—'}</td>
+                    <td className="noprint">
+                      <div className="row" style={{ gap: 8 }}>
+                        <button className="btn ghost" style={{ padding: "5px 10px" }}
+                          onClick={() => {
+                            const nom = prompt("Nom de la squad", s.nom);
+                            if (nom !== null) modifierSquad(s.id, { nom });
+                          }}>
+                          Renommer
+                        </button>
+                        {moi.global && (
+                          <button className="btn ghost" style={{ padding: "5px 10px" }}
+                            onClick={() => supprimerSquad(s.id, s.nom)}>
+                            Supprimer
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -264,6 +356,10 @@ export default function ConsoleAdmin({
                     <td className="noprint">
                       <div className="row" style={{ gap: 8 }}>
                         <button className="btn ghost" style={{ padding: '6px 10px' }}
+                          onClick={() => renommerCompte(c)}>
+                          Modifier
+                        </button>
+                        <button className="btn ghost" style={{ padding: '6px 10px' }}
                           disabled={!modifiable && c.id !== moi.id}
                           onClick={() => modifierCompte(c.id, { reinitialiserMotDePasse: true })}>
                           Réinitialiser
@@ -349,29 +445,48 @@ export default function ConsoleAdmin({
         </div>
       </form>
 
-      {sprints[0] && (
+      {sprints.length > 0 && (
         <div className="bloc">
           <div className="bloc-entete">
-            <div className="bloc-titre">
-              Dernier sprint : {sprints[0].libelle}
-              {sprints[0].squad && ` · ${sprints[0].squad.nom}`}
-            </div>
-            <div className="bloc-note">Capacité totale {sprints[0].capaciteTotale} h</div>
+            <div className="bloc-titre">Sprints</div>
+            <div className="bloc-note">{sprints.length} sprint(s) — période, semaines de revue et capacité calculée</div>
           </div>
           <div className="scroll">
             <table>
               <thead>
-                <tr><th>Semaine</th><th>Début</th><th>Revue</th><th className="num">Jours ouvrés</th><th className="num">Capacité</th><th>État</th></tr>
+                <tr>
+                  <th>Sprint</th>{moi.global && <th>Squad</th>}
+                  <th>Période</th><th className="num">Semaines</th>
+                  <th className="num">Capacité</th><th>État</th><th className="noprint">Actions</th>
+                </tr>
               </thead>
               <tbody>
-                {sprints[0].semaines.map((s) => (
+                {sprints.map((s) => (
                   <tr key={s.id}>
-                    <td>S{s.numero}</td>
-                    <td>{new Date(s.dateDebut).toLocaleDateString('fr-FR')}</td>
-                    <td>{new Date(s.dateFin).toLocaleDateString('fr-FR')}</td>
-                    <td className="num">{s.joursOuvres}</td>
-                    <td className="num">{s.capacite} h</td>
-                    <td>{s.cloturee ? 'Clôturée' : 'Ouverte'}</td>
+                    <td>{s.libelle}</td>
+                    {moi.global && <td className="muted">{s.squad?.nom ?? "—"}</td>}
+                    <td>
+                      {new Date(s.dateDebut).toLocaleDateString("fr-FR")} → {new Date(s.dateFin).toLocaleDateString("fr-FR")}
+                      <div className="bloc-note">
+                        {s.semaines.map((w) => `S${w.numero} : ${new Date(w.dateFin).toLocaleDateString("fr-FR")} (${w.joursOuvres} j, ${w.capacite} h)`).join(" · ")}
+                      </div>
+                    </td>
+                    <td className="num">{s.semaines.length}</td>
+                    <td className="num">{s.capaciteTotale} h</td>
+                    <td>{s.cloture ? "Clôturé" : "En cours"}</td>
+                    <td className="noprint">
+                      <div className="row" style={{ gap: 8 }}>
+                        <button className="btn ghost" style={{ padding: "5px 10px" }} onClick={() => modifierSprint(s)}>
+                          Période
+                        </button>
+                        <button className="btn ghost" style={{ padding: "5px 10px" }} onClick={() => cloturerSprint(s)}>
+                          {s.cloture ? "Rouvrir" : "Clôturer"}
+                        </button>
+                        <button className="btn ghost" style={{ padding: "5px 10px" }} onClick={() => supprimerSprint(s)}>
+                          Supprimer
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -379,6 +494,8 @@ export default function ConsoleAdmin({
           </div>
         </div>
       )}
+
+      {moi.global && <BaseDeDonnees />}
     </>
   );
 }

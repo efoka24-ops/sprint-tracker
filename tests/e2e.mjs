@@ -258,12 +258,54 @@ async function main() {
   check('La modification apparaît sur le tableau de bord partagé',
     String(dashPartage.body).includes('Objectif revu par le développeur'));
 
+
+  // 12d — Tendance burndown et classeur Excel de la base
+  const rapportBurndown = await admin.req(`/rapport?semaine=${s1.id}`);
+  check('Le rapport affiche la tendance burndown',
+    String(rapportBurndown.body).includes('Tendance burndown') && String(rapportBurndown.body).includes('trajectoire idéale'));
+  check('Le burndown chiffre les heures engagées', String(rapportBurndown.body).includes('h engagées'));
+
+  const classeur = await admin.req('/api/bd');
+  check('Le classeur Excel de la base est téléchargeable', classeur.status === 200, `status ${classeur.status}`);
+  check('Le classeur est refusé à un développeur (403)', (await dev.req('/api/bd')).status === 403);
+
+  // 12e — CRUD complet du super admin
+  const renomme = await admin.req(`/api/utilisateurs/${devCree.id}`, {
+    method: 'PATCH', body: JSON.stringify({ nom: `Test Dev ${marque} bis`, email: `bis.${marque}@orange.cm` }),
+  });
+  check('Le super admin modifie le nom et l’email d’un compte',
+    renomme.status === 200 && renomme.body.email === `bis.${marque}@orange.cm`, JSON.stringify(renomme.body).slice(0, 140));
+  check('Un email déjà pris est refusé (409)',
+    (await admin.req(`/api/utilisateurs/${devCree.id}`, { method: 'PATCH', body: JSON.stringify({ email: ADMIN.email }) })).status === 409);
+
+  const squadJetable = await admin.req('/api/squads', { method: 'POST', body: JSON.stringify({ nom: `Squad Test tmp ${marque}` }) });
+  const squadModifiee = await admin.req(`/api/squads/${squadJetable.body.id}`, {
+    method: 'PATCH', body: JSON.stringify({ nom: `Squad Test tmp ${marque} renommée`, heuresParJour: 7 }),
+  });
+  check('Le super admin renomme une squad et change sa base horaire',
+    squadModifiee.status === 200 && squadModifiee.body.heuresParJour === 7, JSON.stringify(squadModifiee.body).slice(0, 140));
+
+  const periodeChangee = await admin.req(`/api/sprints/${nouveauSprint.body.id}`, {
+    method: 'PATCH', body: JSON.stringify({ dateDebut: '2026-11-02', dateFin: '2026-11-27' }),
+  });
+  check('La période d’un sprint est modifiable et redécoupée',
+    periodeChangee.status === 200 && periodeChangee.body.semaines.length === 4,
+    `${periodeChangee.body.semaines?.length} semaines`);
+  check('La capacité suit la nouvelle période', periodeChangee.body.capaciteTotale > 0);
+
+  const cloture = await admin.req(`/api/sprints/${nouveauSprint.body.id}`, {
+    method: 'PATCH', body: JSON.stringify({ cloture: true }),
+  });
+  check('Un sprint peut être clôturé', cloture.status === 200 && cloture.body.cloture === true);
+  check('Une squad vide est supprimable',
+    (await admin.req(`/api/squads/${squadJetable.body.id}`, { method: 'DELETE' })).status === 200);
+
   // 13 — Révocation : la désactivation coupe la session en cours
   check('Le super admin désactive le compte',
     (await admin.req(`/api/utilisateurs/${devCree.id}`, { method: 'PATCH', body: JSON.stringify({ actif: false }) })).status === 200);
   check('La session du compte désactivé ne passe plus (401)', (await dev.req('/api/entrees')).status === 401);
   check('Le compte désactivé ne peut plus se connecter (403)',
-    (await session().connexion(devCree.email, 'MonMotDePasse2026')).status === 403);
+    (await session().connexion(renomme.body.email ?? devCree.email, 'MonMotDePasse2026')).status === 403);
 
 
   // 15 — Délégation : le super admin nomme un Scrum Master, qui monte sa squad
