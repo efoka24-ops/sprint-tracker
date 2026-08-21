@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSemaine, toutesSemaines } from '@/lib/queries';
+import { burndown } from '@/lib/rapport';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut } from '@/lib/roles';
 import Shell from '@/components/Shell';
@@ -14,6 +15,7 @@ export default async function Dashboard({ searchParams }) {
 
   const sp = await searchParams;
   const [semaines, semaine] = await Promise.all([toutesSemaines(moi), getSemaine(sp?.semaine, moi)]);
+  const tendance = semaine ? await burndown(semaine.sprintId) : null;
 
   return (
     <Shell utilisateur={moi} actif="/">
@@ -35,6 +37,7 @@ export default async function Dashboard({ searchParams }) {
           semaine={JSON.parse(JSON.stringify(semaine))}
           semaines={JSON.parse(JSON.stringify(semaines))}
           moiId={moi.id}
+          progression={tendance ? JSON.parse(JSON.stringify(tendance.progression)) : null}
           droits={{
             valider: peut(moi, 'entree.valider'),
             cloturer: peut(moi, 'semaine.cloturer'),

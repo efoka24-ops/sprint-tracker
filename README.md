@@ -195,7 +195,7 @@ npm run dev                                   # terminal 1
 BASE=http://localhost:3000 npm run test:e2e   # terminal 2
 ```
 
-Resultat attendu : `119 tests OK - 0 en echec`. Les regles de calendrier ont
+Resultat attendu : `121 tests OK - 0 en echec`. Les regles de calendrier ont
 leur propre suite unitaire : `npm run test:calendrier` (24 tests, sans serveur). La suite tourne aussi contre la
 production en passant `BASE=https://<votre-domaine>`.
 
@@ -327,6 +327,21 @@ correction) -> Test business -> (Retour business : correction) -> Passage en DAB
 
 Chaque changement est horodate et attribue a son auteur (table
 `HistoriqueStatut`) : c est la matiere des statistiques.
+
+## Taux de progression des objectifs atteints
+
+Le taux d objectifs valides est affiche a trois endroits :
+
+- **tableau de bord** : taux de la semaine, puis taux sur tout le sprint, avec
+  le rythme attendu a ce stade et l evolution en points depuis la revue
+  precedente ;
+- **rapport PDF et PPTX** : le taux, un repere du rythme attendu, le taux de
+  livraison (statut Live) et le detail revue par revue (taux hebdomadaire et
+  taux cumule) ;
+- **espace du developpeur** : son propre taux, sur le sprint et en global.
+
+Le rythme attendu vaut le nombre de revues deja passees rapporte au nombre total
+de semaines : a la fin de S1 d un sprint de 3 semaines, on attend 33 %.
 
 ## Bande passante
 

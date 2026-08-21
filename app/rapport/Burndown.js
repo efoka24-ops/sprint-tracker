@@ -70,6 +70,8 @@ export default function Burndown({ donnees }) {
         <span className="bloc-note">Une revue sans heures saisies n’est pas tracée.</span>
       </div>
 
+      {donnees.progression && <Progression p={donnees.progression} />}
+
       {donnees.explication && <Explication e={donnees.explication} couleur={couleur} />}
 
       <div className="scroll" style={{ marginTop: 10 }}>
@@ -150,6 +152,64 @@ function Explication({ e, couleur }) {
                 <td className="num">{p.realise} h</td>
                 <td className="num" style={{ color: p.reste > 0 ? '#c0392b' : '#1f8a4c' }}>{p.reste} h</td>
                 <td className="num">{p.points}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
+/**
+ * Taux de progression des objectifs atteints : niveau atteint, rythme attendu
+ * a ce stade du sprint, et detail par revue hebdomadaire.
+ */
+function Progression({ p }) {
+  const couleur = p.ecart >= 0 ? "#1f8a4c" : "#c2680a";
+  return (
+    <div className="progression">
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+        <div className="bloc-titre" style={{ fontSize: 14 }}>Taux de progression des objectifs atteints</div>
+        <div className="bloc-note">
+          {p.valides} sur {p.total} objectif(s) · {p.livres} en live
+        </div>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ fontSize: 34, fontWeight: 800, color: couleur, lineHeight: 1 }}>{p.taux} %</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ height: 14, background: "#eef0f3", borderRadius: 5, overflow: "hidden", position: "relative" }}>
+            <div style={{ height: "100%", width: p.taux + "%", background: couleur, borderRadius: 5 }} />
+            {/* repere du rythme attendu a ce stade */}
+            <div style={{
+              position: "absolute", top: -3, bottom: -3, left: p.attendu + "%",
+              width: 2, background: "#111",
+            }} />
+          </div>
+          <div className="bloc-note" style={{ marginTop: 6 }}>
+            Attendu à ce stade : {p.attendu} % (trait noir) — <b style={{ color: couleur }}>{p.verdict}</b>
+            {p.evolution !== null && `, ${p.evolution > 0 ? "+" : ""}${p.evolution} pt depuis la revue précédente`}.
+            {" "}Taux de livraison (statut Live) : {p.tauxLivraison} %.
+          </div>
+        </div>
+      </div>
+
+      <div className="scroll" style={{ marginTop: 10 }}>
+        <table className="rapport-table">
+          <thead>
+            <tr><th>Revue</th><th>Objectifs</th><th>Atteints</th><th>Taux</th><th>Taux cumulé</th><th>En live</th></tr>
+          </thead>
+          <tbody>
+            {p.parSemaine.map((s) => (
+              <tr key={s.semaine}>
+                <td><b>{s.semaine}</b> — {new Date(s.revue).toLocaleDateString("fr-FR")}</td>
+                <td className="num">{s.objectifs}</td>
+                <td className="num">{s.valides}</td>
+                <td className="num">{s.taux} %</td>
+                <td className="num">{s.tauxCumule} %</td>
+                <td className="num">{s.livres}</td>
               </tr>
             ))}
           </tbody>

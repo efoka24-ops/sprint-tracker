@@ -264,6 +264,11 @@ async function main() {
   check('Le rapport affiche la tendance burndown',
     String(rapportBurndown.body).includes('Tendance burndown') && String(rapportBurndown.body).includes('trajectoire idéale'));
   check('Le burndown chiffre les heures engagées', String(rapportBurndown.body).includes('h engagées'));
+  check('Le taux de progression des objectifs est affiché',
+    String(rapportBurndown.body).includes('Taux de progression des objectifs atteints')
+    && String(rapportBurndown.body).includes('Attendu à ce stade'));
+  check('Le tableau de bord affiche le taux de progression',
+    String((await admin.req(`/?semaine=${s1.id}`)).body).includes('Taux de progression'));
   check('L’écart de burndown est expliqué',
     String(rapportBurndown.body).includes('Pourquoi cet écart') && String(rapportBurndown.body).includes('rythme attendu'));
   check('L’explication nomme les porteurs et leur reste',

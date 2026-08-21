@@ -148,6 +148,15 @@ export async function GET(req) {
       },
     );
 
+    if (tendance.progression) {
+      const pr = tendance.progression;
+      courbe.addText(
+        `Objectifs atteints : ${pr.taux} % (${pr.valides}/${pr.total}) · attendu ${pr.attendu} % · ${pr.verdict}` +
+        ` · livraison ${pr.tauxLivraison} %`,
+        { x: 0.4, y: 4.75, w: 9.2, fontSize: 11, bold: true, color: pr.ecart >= 0 ? "1F8A4C" : "C2680A" },
+      );
+    }
+
     if (tendance.explication) {
       const ex = tendance.explication;
       courbe.addText(ex.resume, {

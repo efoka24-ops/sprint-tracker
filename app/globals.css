@@ -176,3 +176,6 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--orange);outline-
 .explication{margin-top:14px;padding:14px 16px;background:#f7f8fa;border-left:4px solid var(--orange);border-radius:8px;page-break-inside:avoid}
 .explication-chiffres{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:#5c6470}
 .explication-causes{margin:12px 0 0;padding-left:18px;font-size:13px;display:flex;flex-direction:column;gap:8px}
+
+/* Taux de progression des objectifs */
+.progression{margin-top:14px;padding:14px 16px;border:1px solid #e6e8ec;border-radius:10px;page-break-inside:avoid}

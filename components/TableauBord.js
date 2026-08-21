@@ -9,7 +9,7 @@ import { initiales } from '@/components/Shell';
 const COULEURS_AVATAR = ['#FF7900', '#111', '#5c6470', '#2e9c5a', '#8e44ad'];
 const VUES = ['Vue d’ensemble', 'Bande passante', 'Par porteur', 'Bilan capacité'];
 
-export default function TableauBord({ semaine, semaines, droits, moiId }) {
+export default function TableauBord({ semaine, semaines, droits, moiId, progression }) {
   const router = useRouter();
   const [vue, setVue] = useState(VUES[0]);
   const [lignes, setLignes] = useState(semaine.entrees);
@@ -350,17 +350,50 @@ export default function TableauBord({ semaine, semaines, droits, moiId }) {
             </div>
 
             <div className="carte-noire">
-              <div className="bloc-titre" style={{ marginBottom: 4 }}>Avancement du sprint</div>
-              <div style={{ fontSize: 12.5, color: '#9aa0a8', marginBottom: 16 }}>Objectifs validés cette semaine</div>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14 }}>
+              <div className="bloc-titre" style={{ marginBottom: 4 }}>Taux de progression</div>
+              <div style={{ fontSize: 12.5, color: "#9aa0a8", marginBottom: 16 }}>Objectifs atteints cette semaine</div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 14 }}>
                 <div className="pct">{stats.pct(stats.valides)}%</div>
-                <div style={{ fontSize: 13, color: '#c7ccd2', paddingBottom: 8 }}>
+                <div style={{ fontSize: 13, color: "#c7ccd2", paddingBottom: 8 }}>
                   {stats.valides} sur {stats.total} sujets validés
                 </div>
               </div>
-              <div style={{ height: 8, background: '#2a2a2a', borderRadius: 5, marginTop: 16, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${stats.pct(stats.valides)}%`, background: '#FF7900', borderRadius: 5 }} />
+              <div style={{ height: 8, background: "#2a2a2a", borderRadius: 5, marginTop: 16, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${stats.pct(stats.valides)}%`, background: "#FF7900", borderRadius: 5 }} />
               </div>
+
+              {progression && (
+                <div style={{ marginTop: 18, borderTop: "1px solid #2a2a2a", paddingTop: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <span style={{ fontSize: 12.5, color: "#9aa0a8" }}>Sur tout le sprint</span>
+                    <span style={{ fontWeight: 800, fontSize: 20 }}>{progression.taux} %</span>
+                  </div>
+                  <div style={{ height: 8, background: "#2a2a2a", borderRadius: 5, marginTop: 8, overflow: "hidden" }}>
+                    <div style={{
+                      height: "100%", width: `${progression.taux}%`, borderRadius: 5,
+                      background: progression.ecart >= 0 ? "#2e9c5a" : "#FF7900",
+                    }} />
+                  </div>
+                  <div style={{ fontSize: 12, color: "#c7ccd2", marginTop: 8, lineHeight: 1.5 }}>
+                    {progression.valides} objectif(s) atteint(s) sur {progression.total} ·
+                    {" "}{progression.livres} en live ({progression.tauxLivraison} %)
+                    <br />
+                    Attendu à ce stade : {progression.attendu} % —{" "}
+                    <b style={{ color: progression.ecart >= 0 ? "#7ee2a8" : "#ffb27a" }}>
+                      {progression.verdict}
+                    </b>
+                    {progression.evolution !== null && (
+                      <>
+                        <br />
+                        Évolution depuis la revue précédente :{" "}
+                        <b style={{ color: progression.evolution >= 0 ? "#7ee2a8" : "#ffb27a" }}>
+                          {progression.evolution > 0 ? "+" : ""}{progression.evolution} pt
+                        </b>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
               <a
                 href={`/api/export?semaineId=${semaine.id}`}
                 style={{ display: 'inline-block', marginTop: 18, fontSize: 13, fontWeight: 700 }}

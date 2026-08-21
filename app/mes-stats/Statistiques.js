@@ -87,6 +87,11 @@ export default function Statistiques({ stats, sprints, membres, sprintId, cibleI
           { v: surSprint?.objectifs ?? 0, l: 'Points portés', accent: '#0a6fc2', global: global.objectifs },
           { v: surSprint?.livres ?? 0, l: 'Points en live', accent: '#1f8a4c', global: global.livres },
           { v: `${surSprint?.heuresRealisees ?? 0} h`, l: 'Heures réalisées', accent: '#6a3fb5', global: `${global.heuresRealisees} h` },
+          {
+            v: `${surSprint?.objectifs ? Math.round((surSprint.valides / surSprint.objectifs) * 100) : 0} %`,
+            l: 'Objectifs atteints', accent: '#c2680a',
+            global: `${global.objectifs ? Math.round((global.valides / global.objectifs) * 100) : 0} %`,
+          },
         ].map((k) => (
           <div className="kpi-carte" key={k.l} style={{ borderTopColor: k.accent }}>
             <div className="kpi-valeur">{k.v}</div>
