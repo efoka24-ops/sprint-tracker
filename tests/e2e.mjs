@@ -353,6 +353,55 @@ async function main() {
   check('L’espace « Mes réalisations » est accessible',
     pageStats.status === 200 && String(pageStats.body).includes('Réalisations'), `status ${pageStats.status}`);
 
+
+  // 12g — Affectation des objectifs par le pilotage
+  const affecte = await admin.req('/api/entrees', {
+    method: 'POST',
+    body: JSON.stringify({
+      semaineId: s1.id, developpeurId: dAutrui.developpeurId,
+      ticket: `#AFF${marque % 1000}`, projet: 'Sujet affecté',
+      objectif: 'Point confié par le Scrum Master', capaciteH: 12, execution: 'FAISABILITE',
+    }),
+  });
+  check('Le super admin affecte un objectif à un porteur',
+    affecte.status === 200 && affecte.body.developpeur.id === dAutrui.developpeurId,
+    JSON.stringify(affecte.body).slice(0, 140));
+
+  check('Un développeur ne peut pas affecter à autrui (403)',
+    (await dev.req('/api/entrees', {
+      method: 'POST',
+      body: JSON.stringify({
+        semaineId: s1.id, developpeurId: dAutrui.developpeurId,
+        ticket: '#X', projet: 'p', objectif: 'o', capaciteH: 1,
+      }),
+    })).status === 403);
+
+  const reaffecte = await admin.req(`/api/entrees/${affecte.body.id}`, {
+    method: 'PATCH', body: JSON.stringify({ developpeurId: devCree.id }),
+  });
+  check('Un objectif se réaffecte à un autre porteur',
+    reaffecte.status === 200 && reaffecte.body.developpeur.id === devCree.id);
+
+  const deplace = await admin.req(`/api/entrees/${affecte.body.id}`, {
+    method: 'PATCH', body: JSON.stringify({ semaineId: s2.id }),
+  });
+  check('Un objectif se déplace d’une semaine à l’autre', deplace.status === 200);
+  check('Le point apparaît bien sur la nouvelle semaine',
+    (await admin.req(`/api/entrees?semaineId=${s2.id}`)).body.some((e) => e.id === affecte.body.id));
+
+  check('Un développeur ne réaffecte pas un point (403)',
+    (await dev.req(`/api/entrees/${affecte.body.id}`, { method: 'PATCH', body: JSON.stringify({ developpeurId: dAutrui.developpeurId }) })).status === 403);
+
+  const modifie = await admin.req(`/api/entrees/${affecte.body.id}`, {
+    method: 'PATCH', body: JSON.stringify({ projet: 'Sujet affecté et corrigé', capaciteH: 16 }),
+  });
+  check('Le pilotage corrige le sujet et la capacité',
+    modifie.status === 200 && modifie.body.projet === 'Sujet affecté et corrigé' && modifie.body.capaciteH === 16,
+    JSON.stringify(modifie.body).slice(0, 140));
+
+  check('Le pilotage supprime un objectif affecté',
+    (await admin.req(`/api/entrees/${affecte.body.id}`, { method: 'DELETE' })).status === 200);
+
   // 13 — Révocation : la désactivation coupe la session en cours
   check('Le super admin désactive le compte',
     (await admin.req(`/api/utilisateurs/${devCree.id}`, { method: 'PATCH', body: JSON.stringify({ actif: false }) })).status === 200);

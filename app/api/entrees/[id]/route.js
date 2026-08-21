@@ -34,7 +34,27 @@ export async function PATCH(req, { params }) {
     return NextResponse.json({ error: 'Statut inconnu' }, { status: 400 });
   }
 
-  const champsPorteur = ['execution', 'reelH', 'commentaire', 'blocage'].filter((k) => k in b);
+  // Reaffectation ponctuelle : changer de porteur ou de semaine depuis le tableau.
+  if ('developpeurId' in b || 'semaineId' in b) {
+    if (!peut(moi, 'entree.affecter')) {
+      return NextResponse.json({ error: 'Réaffectation réservée au Scrum Master et au super admin' }, { status: 403 });
+    }
+    if (b.developpeurId) {
+      const porteur = await prisma.developpeur.findUnique({ where: { id: b.developpeurId } });
+      if (!porteur) return NextResponse.json({ error: 'Porteur introuvable' }, { status: 404 });
+      if (!peut(moi, 'dashboard.tout') && porteur.squadId !== moi.squadId) {
+        return NextResponse.json({ error: 'Ce porteur n’est pas dans votre squad' }, { status: 403 });
+      }
+      data.developpeurId = b.developpeurId;
+    }
+    if (b.semaineId) {
+      const semaine = await prisma.semaine.findUnique({ where: { id: b.semaineId } });
+      if (!semaine) return NextResponse.json({ error: 'Semaine introuvable' }, { status: 404 });
+      data.semaineId = b.semaineId;
+    }
+  }
+
+  const champsPorteur = ['execution', 'reelH', 'commentaire', 'blocage', 'ticket', 'idPerfit', 'projet', 'objectif', 'capaciteH'].filter((k) => k in b);
   if (champsPorteur.length) {
     if (!peutSurEntree(moi, 'modifier', entree)) {
       return NextResponse.json({ error: 'Objectif porté par un autre développeur' }, { status: 403 });
@@ -42,7 +62,8 @@ export async function PATCH(req, { params }) {
     for (const k of champsPorteur) {
       data[k] = k === 'reelH'
         ? (b.reelH === '' || b.reelH === null ? null : Number(b.reelH))
-        : b[k];
+        : k === 'capaciteH' ? Number(b.capaciteH) || 0
+          : b[k];
     }
   }
 

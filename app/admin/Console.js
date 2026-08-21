@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ROLES, MATRICE } from '@/lib/roles';
 import Calendrier from './Calendrier';
 import BaseDeDonnees from './BaseDeDonnees';
+import Objectifs from './Objectifs';
 
 const DANS = (n) => {
   const d = new Date();
@@ -409,6 +410,15 @@ export default function ConsoleAdmin({
           </table>
         </div>
       </div>
+
+      {/* ---- Affectation des objectifs ---- */}
+      {moi.peutAffecter && (
+        <Objectifs
+          sprints={sprints}
+          membres={comptes.filter((x) => x.actif && x.role !== 'OBSERVATEUR').map((x) => ({ id: x.id, nom: x.nom }))}
+          moiId={moi.id}
+        />
+      )}
 
       {/* ---- Calendrier : feries et conges ---- */}
       <Calendrier

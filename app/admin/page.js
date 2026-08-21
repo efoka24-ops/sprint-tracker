@@ -56,7 +56,7 @@ export default async function AdminPage() {
           </div>
         ) : (
           <ConsoleAdmin
-            moi={{ id: moi.id, role: moi.role, squadId: moi.squadId, global }}
+            moi={{ id: moi.id, role: moi.role, squadId: moi.squadId, global, peutAffecter: peut(moi, 'entree.affecter') }}
             rolesAttribuables={rolesAttribuables(moi)}
             comptesInitiaux={JSON.parse(JSON.stringify(comptes))}
             sprintsInitiaux={JSON.parse(JSON.stringify(sprints))}

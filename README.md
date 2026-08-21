@@ -195,7 +195,7 @@ npm run dev                                   # terminal 1
 BASE=http://localhost:3000 npm run test:e2e   # terminal 2
 ```
 
-Resultat attendu : `109 tests OK - 0 en echec`. Les regles de calendrier ont
+Resultat attendu : `117 tests OK - 0 en echec`. Les regles de calendrier ont
 leur propre suite unitaire : `npm run test:calendrier` (24 tests, sans serveur). La suite tourne aussi contre la
 production en passant `BASE=https://<votre-domaine>`.
 
@@ -231,6 +231,23 @@ adresses Orange. Les comptes existants conservent leur mot de passe.
 ```bash
 node --env-file=.env.local prisma/comptes-equipe.mjs
 ```
+
+## Affectation des objectifs
+
+Le super admin et le Scrum Master disposent, dans la console d administration,
+d un panneau « Affecter un objectif a un porteur » : choix du sprint, de la
+semaine de revue et du porteur, puis creation du point (ticket, ID Perfit,
+projet, objectif, capacite, statut). Le tableau qui suit liste les objectifs de
+la semaine choisie et permet de :
+
+- **reaffecter** un point a un autre membre de la squad (liste deroulante),
+- **deplacer** un point d une semaine de revue a l autre,
+- **modifier** le sujet, la capacite, le reel et le statut,
+- **supprimer** un point.
+
+Un developpeur ne peut, lui, saisir et modifier que ses propres objectifs : toute
+tentative d affectation a autrui est refusee (403). Le porteur doit appartenir a
+la squad du sprint, et un compte desactive ne peut pas recevoir de point.
 
 ## Calendrier : periode, feries et conges
 
