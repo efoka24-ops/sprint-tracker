@@ -70,6 +70,8 @@ export default function Burndown({ donnees }) {
         <span className="bloc-note">Une revue sans heures saisies n’est pas tracée.</span>
       </div>
 
+      {donnees.explication && <Explication e={donnees.explication} couleur={couleur} />}
+
       <div className="scroll" style={{ marginTop: 10 }}>
         <table className="rapport-table">
           <thead>
@@ -86,6 +88,68 @@ export default function Burndown({ donnees }) {
                 </td>
                 <td className="num">{p.realise} h</td>
                 <td className="num">{p.valides} / {p.objectifs}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * D'où vient l'écart : la phrase qui l'explique, puis les causes chiffrées et
+ * la contribution de chaque porteur. Sans cela, « en retard de 10 h » ne dit
+ * pas quoi corriger.
+ */
+function Explication({ e, couleur }) {
+  return (
+    <div className="explication">
+      <div className="bloc-titre" style={{ fontSize: 14, marginBottom: 6 }}>Pourquoi cet écart</div>
+      <p style={{ margin: '0 0 10px', fontSize: 13.5 }}>{e.resume}</p>
+
+      <div className="explication-chiffres">
+        <span><b>{e.rythmeAttendu} h</b> rythme attendu</span>
+        <span><b>{e.realiseSemaine} h</b> réalisées</span>
+        <span><b>{e.engageSemaine} h</b> engagées sur {e.semaine}</span>
+        <span style={{ color: couleur }}>
+          <b>{e.manque > 0 ? `−${e.manque} h` : `+${Math.abs(e.manque)} h`}</b> d’écart de rythme
+        </span>
+      </div>
+
+      {e.surEngagement > 0 && (
+        <p className="bloc-note" style={{ marginTop: 8 }}>
+          Attention : {e.engageSemaine} h ont été engagées pour une capacité de {e.capaciteSemaine} h
+          ({e.surEngagement} h de sur-engagement). Le rythme attendu est hors de portée tant que
+          la charge n’est pas réduite ou étalée.
+        </p>
+      )}
+
+      {e.causes.length > 0 && (
+        <ul className="explication-causes">
+          {e.causes.map((c) => (
+            <li key={c.cle}>
+              <b>{c.libelle}</b> — {c.heures} h restantes
+              {c.remarque && <div className="bloc-note">{c.remarque}</div>}
+              <div className="bloc-note">{c.detail.join(' · ')}</div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="scroll" style={{ marginTop: 10 }}>
+        <table className="rapport-table">
+          <thead>
+            <tr><th>Porteur</th><th>Engagé</th><th>Réalisé</th><th>Reste</th><th>Points</th></tr>
+          </thead>
+          <tbody>
+            {e.parPorteur.map((p) => (
+              <tr key={p.nom}>
+                <td><b>{p.nom}</b>{p.bloques > 0 && <span className="bloc-note"> · {p.bloques} bloqué(s)</span>}</td>
+                <td className="num">{p.engage} h</td>
+                <td className="num">{p.realise} h</td>
+                <td className="num" style={{ color: p.reste > 0 ? '#c0392b' : '#1f8a4c' }}>{p.reste} h</td>
+                <td className="num">{p.points}</td>
               </tr>
             ))}
           </tbody>

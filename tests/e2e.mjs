@@ -264,6 +264,10 @@ async function main() {
   check('Le rapport affiche la tendance burndown',
     String(rapportBurndown.body).includes('Tendance burndown') && String(rapportBurndown.body).includes('trajectoire idéale'));
   check('Le burndown chiffre les heures engagées', String(rapportBurndown.body).includes('h engagées'));
+  check('L’écart de burndown est expliqué',
+    String(rapportBurndown.body).includes('Pourquoi cet écart') && String(rapportBurndown.body).includes('rythme attendu'));
+  check('L’explication nomme les porteurs et leur reste',
+    String(rapportBurndown.body).includes('Réalisé') && String(rapportBurndown.body).includes('Reste'));
 
   const classeur = await admin.req('/api/bd');
   check('Le classeur Excel de la base est téléchargeable', classeur.status === 200, `status ${classeur.status}`);

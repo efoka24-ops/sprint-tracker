@@ -148,6 +148,24 @@ export async function GET(req) {
       },
     );
 
+    if (tendance.explication) {
+      const ex = tendance.explication;
+      courbe.addText(ex.resume, {
+        x: 0.4, y: 5.05, w: 9.2, fontSize: 10.5, color: "333333", italic: true,
+      });
+      const causes = ex.causes.slice(0, 3).map((c) => ({
+        text: `${c.libelle} — ${c.heures} h restantes`,
+        options: { bullet: true, breakLine: true, fontSize: 10 },
+      }));
+      if (ex.surEngagement > 0) {
+        causes.unshift({
+          text: `Sur-engagement : ${ex.engageSemaine} h engagées pour ${ex.capaciteSemaine} h de capacité`,
+          options: { bullet: true, breakLine: true, fontSize: 10, color: "C0392B" },
+        });
+      }
+      if (causes.length) courbe.addText(causes, { x: 0.5, y: 5.35, w: 9, h: 0.9 });
+    }
+
     courbe.addTable(
       [
         ['Revue', 'Idéal', 'Réel', 'Écart'].map((t) => ({ text: t, options: { bold: true, color: 'FFFFFF', fill: { color: NOIR } } })),

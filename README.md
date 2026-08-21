@@ -195,7 +195,7 @@ npm run dev                                   # terminal 1
 BASE=http://localhost:3000 npm run test:e2e   # terminal 2
 ```
 
-Resultat attendu : `117 tests OK - 0 en echec`. Les regles de calendrier ont
+Resultat attendu : `119 tests OK - 0 en echec`. Les regles de calendrier ont
 leur propre suite unitaire : `npm run test:calendrier` (24 tests, sans serveur). La suite tourne aussi contre la
 production en passant `BASE=https://<votre-domaine>`.
 
@@ -296,7 +296,21 @@ npm run bd:export     # ecrit bd/sprint-tracker.xlsx
 npm run bd:publier    # ecrit, commite et pousse
 ```
 
-## Tendance burndown
+## Tendance burndown et explication de l ecart
+
+Le rapport ne se contente pas d annoncer « en retard de N heures » : il dit
+pourquoi. Sous la courbe, un bloc « Pourquoi cet ecart » donne la phrase de
+synthese (rythme attendu, heures realisees, difference), puis les causes
+chiffrees, classees par heures restantes :
+
+- points bloques (avec le motif du blocage),
+- points non demarres,
+- points sans heures declarees — le retard peut n etre qu apparent,
+- points en cours avec avancement partiel,
+- sur-engagement : plus d heures engagees que la capacite calculee de la semaine.
+
+Un tableau nomme ensuite chaque porteur avec son engage, son realise et son
+reste. La meme synthese figure sur la diapositive burndown du PPTX.
 
 Le rapport (`/rapport`) et le PPTX comportent une courbe de burndown : reste a
 faire mesure a chaque revue hebdomadaire (heures engagees moins heures realisees
