@@ -179,3 +179,6 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--orange);outline-
 
 /* Taux de progression des objectifs */
 .progression{margin-top:14px;padding:14px 16px;border:1px solid #e6e8ec;border-radius:10px;page-break-inside:avoid}
+
+/* Identifiants remis à un collaborateur */
+.identifiant{display:inline-block;font-size:18px;font-weight:800;background:#fff;border:1px solid #e6e8ec;padding:8px 14px;border-radius:8px;margin-top:4px}

@@ -162,6 +162,26 @@ Cloisonnement : un Scrum Master ne voit que sa squad (comptes, sprints, tableau 
 bord) et ne peut attribuer que les roles Tech Lead, Developpeur et Observateur.
 Le super admin voit tout et nomme les Scrum Masters.
 
+### Remettre un mot de passe a quelqu un
+
+Le mot de passe provisoire s affiche **une seule fois**, dans une carte orange en
+haut de la console, juste apres la creation du compte. Cette carte propose :
+copier le mot de passe, copier un message pret a envoyer (adresse, identifiant,
+mot de passe) ou ouvrir un brouillon de courriel.
+
+S il a ete perdu ou jamais transmis, la colonne Actions de la ligne du compte
+porte le bouton **« Generer un mot de passe »** (libelle « Reinitialiser le mot
+de passe » pour quelqu un qui s est deja connecte) : il produit un nouveau
+provisoire et reaffiche la carte.
+
+Deux points bloquent l acces independamment du mot de passe :
+
+- un compte **desactive** ne peut pas se connecter (message « Compte desactive »).
+  La console signale en rouge le nombre de comptes desactives ; le bouton
+  « Reactiver » les remet en service.
+- un compte desactive **ne compte pas dans la capacite** de la squad : les
+  semaines concernees tombent a 0 h tant qu il n est pas reactive.
+
 ### Cycle d un acces
 
 1. Le super admin (ou le Scrum Master pour sa squad) cree le compte : nom, email, role.

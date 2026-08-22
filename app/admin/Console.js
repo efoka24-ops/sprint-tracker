@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ROLES, MATRICE } from '@/lib/roles';
 import Calendrier from './Calendrier';
@@ -172,21 +172,7 @@ export default function ConsoleAdmin({
         </div>
       )}
 
-      {secret && (
-        <div className="carte-blanche" style={{ borderLeft: '5px solid var(--orange)' }}>
-          <div className="bloc-titre">Accès de {secret.nom} — {ROLES[secret.role]?.label}</div>
-          <p className="bloc-note" style={{ margin: '6px 0 12px' }}>
-            Mot de passe provisoire affiché une seule fois : transmettez-le à l’intéressé,
-            qui devra le changer à sa première connexion.
-          </p>
-          <div className="row" style={{ alignItems: 'center' }}>
-            <code style={{ fontSize: 20, fontWeight: 800, letterSpacing: 2, background: '#f1f2f4', padding: '8px 14px', borderRadius: 8 }}>
-              {secret.mdp}
-            </code>
-            <span className="bloc-note">identifiant : {secret.email}</span>
-          </div>
-        </div>
-      )}
+      {secret && <CarteIdentifiants secret={secret} onFermer={() => setSecret(null)} />}
 
       {/* ---- Squads ---- */}
       <div className="carte-blanche">
@@ -308,7 +294,14 @@ export default function ConsoleAdmin({
       <div className="bloc">
         <div className="bloc-entete">
           <div className="bloc-titre">{moi.global ? 'Tous les accès' : 'Les accès de ma squad'}</div>
-          <div className="bloc-note">{comptes.filter((c) => c.actif).length} compte(s) actif(s)</div>
+          <div className="bloc-note">
+            {comptes.filter((c) => c.actif).length} compte(s) actif(s)
+            {comptes.some((c) => !c.actif) && (
+              <span style={{ color: "var(--rouge)", fontWeight: 700 }}>
+                {" "}· {comptes.filter((c) => !c.actif).length} désactivé(s), qui ne peuvent pas se connecter
+              </span>
+            )}
+          </div>
         </div>
         <div className="scroll">
           <table>
@@ -349,7 +342,11 @@ export default function ConsoleAdmin({
                         : { background: '#fdecea', color: '#c0392b' }}>
                         {c.actif ? 'Actif' : 'Désactivé'}
                       </span>
-                      {c.doitChangerMdp && <div className="bloc-note" style={{ marginTop: 4 }}>mot de passe à changer</div>}
+                      {c.doitChangerMdp && (
+                        <div className="bloc-note" style={{ marginTop: 4 }}>
+                          {c.derniereConnexion ? 'doit changer son mot de passe' : 'mot de passe provisoire à transmettre'}
+                        </div>
+                      )}
                     </td>
                     <td className="muted">
                       {c.derniereConnexion ? new Date(c.derniereConnexion).toLocaleString('fr-FR') : 'jamais'}
@@ -362,8 +359,9 @@ export default function ConsoleAdmin({
                         </button>
                         <button className="btn ghost" style={{ padding: '6px 10px' }}
                           disabled={!modifiable && c.id !== moi.id}
+                          title="Génère un nouveau mot de passe provisoire à transmettre"
                           onClick={() => modifierCompte(c.id, { reinitialiserMotDePasse: true })}>
-                          Réinitialiser
+                          {c.derniereConnexion ? 'Réinitialiser le mot de passe' : 'Générer un mot de passe'}
                         </button>
                         {modifiable && (
                           <button className="btn ghost" style={{ padding: '6px 10px' }}
@@ -507,5 +505,85 @@ export default function ConsoleAdmin({
 
       {moi.global && <BaseDeDonnees />}
     </>
+  );
+}
+
+/**
+ * Identifiants à transmettre : le mot de passe provisoire n'est affiché qu'une
+ * fois, on facilite donc sa remise — copie en un clic et brouillon de courriel
+ * prêt à envoyer. S'il est perdu, « Générer un mot de passe » en produit un autre.
+ */
+function CarteIdentifiants({ secret, onFermer }) {
+  const [copie, setCopie] = useState('');
+  const carte = useRef(null);
+
+  // La carte apparaît en haut de page : on y amène l'utilisateur.
+  useEffect(() => {
+    carte.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [secret]);
+
+  const adresse = typeof window === 'undefined' ? '' : window.location.origin;
+  const message =
+    `Bonjour ${secret.nom},\n\n`
+    + `Votre accès au suivi de sprint est ouvert.\n\n`
+    + `Adresse : ${adresse}\n`
+    + `Identifiant : ${secret.email}\n`
+    + `Mot de passe provisoire : ${secret.mdp}\n\n`
+    + `À la première connexion, l'application vous demandera de choisir votre mot de passe personnel.`;
+
+  const copier = async (texte, quoi) => {
+    try {
+      await navigator.clipboard.writeText(texte);
+      setCopie(quoi);
+      setTimeout(() => setCopie(''), 2500);
+    } catch {
+      setCopie('échec');
+    }
+  };
+
+  return (
+    <div ref={carte} className="carte-blanche" style={{ borderLeft: '5px solid var(--orange)', background: '#fffaf4' }}>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <div className="bloc-titre">
+          Identifiants de {secret.nom} — {ROLES[secret.role]?.label}
+        </div>
+        <button className="btn ghost" style={{ padding: '4px 10px' }} onClick={onFermer}>Fermer</button>
+      </div>
+
+      <p className="bloc-note" style={{ margin: '6px 0 14px' }}>
+        Mot de passe provisoire, affiché une seule fois. Transmettez-le à l’intéressé :
+        il choisira son mot de passe définitif à la première connexion. S’il est perdu,
+        utilisez « Générer un mot de passe » sur la ligne du compte.
+      </p>
+
+      <div className="row" style={{ alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <div>
+          <div className="bloc-note">Identifiant</div>
+          <code className="identifiant">{secret.email}</code>
+        </div>
+        <div>
+          <div className="bloc-note">Mot de passe provisoire</div>
+          <code className="identifiant" style={{ letterSpacing: 3 }}>{secret.mdp}</code>
+        </div>
+        <div className="row" style={{ gap: 8 }}>
+          <button className="btn ghost" onClick={() => copier(secret.mdp, 'mot de passe')}>
+            Copier le mot de passe
+          </button>
+          <button className="btn ghost" onClick={() => copier(message, 'message')}>
+            Copier le message complet
+          </button>
+          <a className="btn"
+            href={`mailto:${secret.email}?subject=${encodeURIComponent('Votre accès au suivi de sprint')}&body=${encodeURIComponent(message)}`}>
+            Envoyer par mail
+          </a>
+        </div>
+      </div>
+
+      {copie && (
+        <p style={{ color: copie === 'échec' ? 'var(--rouge)' : 'var(--vert)', fontSize: 13, marginTop: 10 }}>
+          {copie === 'échec' ? 'Copie impossible : sélectionnez le texte à la main.' : `Le ${copie} est dans le presse-papiers.`}
+        </p>
+      )}
+    </div>
   );
 }

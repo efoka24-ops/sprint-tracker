@@ -110,7 +110,10 @@ async function main() {
 
   // 6 — Saisie : le développeur crée son objectif de la semaine
   const sprints = (await admin.req('/api/sprints')).body;
-  const sprint1 = sprints.find((s) => s.numero === 1) || sprints[sprints.length - 1];
+  // Plusieurs squads coexistent : on travaille sur un sprint de la squad du super admin.
+  const monCompte = (await admin.req('/api/utilisateurs')).body.find((u) => u.email === ADMIN.email);
+  const sprint1 = sprints.find((s) => s.squadId === monCompte.squadId && s.semaines.length >= 2)
+    || sprints.find((s) => s.numero === 1) || sprints[sprints.length - 1];
   check('Un sprint compte 3 semaines', sprint1.semaines.length === 3, `${sprint1.semaines.length} semaines`);
   const s1 = sprint1.semaines.find((s) => s.numero === 1);
   const s2 = sprint1.semaines.find((s) => s.numero === 2);
@@ -411,12 +414,24 @@ async function main() {
   check('Le pilotage supprime un objectif affecté',
     (await admin.req(`/api/entrees/${affecte.body.id}`, { method: 'DELETE' })).status === 200);
 
+  // 12h — Remise des identifiants : générer un mot de passe pour un compte existant
+  const regenere = await admin.req(`/api/utilisateurs/${devCree.id}`, {
+    method: 'PATCH', body: JSON.stringify({ reinitialiserMotDePasse: true }),
+  });
+  check('Le super admin génère un nouveau mot de passe provisoire',
+    regenere.status === 200 && typeof regenere.body.motDePasseProvisoire === 'string',
+    JSON.stringify(regenere.body).slice(0, 140));
+  check('Ce mot de passe ouvre la session et impose un changement',
+    (await session().connexion(regenere.body.email, regenere.body.motDePasseProvisoire)).body.utilisateur?.doitChangerMdp === true);
+  check('La console annonce le bouton de génération',
+    String((await admin.req('/admin')).body).includes('énérer un mot de passe'));
+
   // 13 — Révocation : la désactivation coupe la session en cours
   check('Le super admin désactive le compte',
     (await admin.req(`/api/utilisateurs/${devCree.id}`, { method: 'PATCH', body: JSON.stringify({ actif: false }) })).status === 200);
   check('La session du compte désactivé ne passe plus (401)', (await dev.req('/api/entrees')).status === 401);
   check('Le compte désactivé ne peut plus se connecter (403)',
-    (await session().connexion(renomme.body.email ?? devCree.email, 'MonMotDePasse2026')).status === 403);
+    (await session().connexion(regenere.body.email, regenere.body.motDePasseProvisoire)).status === 403);
 
 
   // 15 — Délégation : le super admin nomme un Scrum Master, qui monte sa squad
