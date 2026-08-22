@@ -140,6 +140,9 @@ npm run db:push
 npm run db:seed
 ```
 
+Les suites envisagees sont listees dans [ROADMAP.md](ROADMAP.md) ; les versions
+livrees dans [CHANGELOG.md](CHANGELOG.md).
+
 ## Modele d acces
 
 Deux niveaux de delegation : le super admin cree les squads et leurs Scrum Masters,
