@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const PUBLIQUES = ['/connexion', '/api/auth'];
+const PUBLIQUES = ['/connexion', '/api/auth', '/suivi', '/api/public'];
 
 // Fichiers servis depuis public/ (logo, favicon...) : jamais protégés.
 const FICHIER = /\.(png|jpg|jpeg|svg|gif|webp|ico|css|js|woff2?)$/i;
