@@ -11,6 +11,8 @@ export default function RetrospectivePage() {
 
   const [sprint, setSprint] = useState(null)
   const [retrospective, setRetrospective] = useState(null)
+  const [bilanCalcule, setBilanCalcule] = useState('')
+  const [stats, setStats] = useState(null)
   const [editingSection, setEditingSection] = useState(null) // 'bilan', 'pointsForts', 'pointsFaibles', 'ameliorations'
   const [formData, setFormData] = useState({
     bilan: '',
@@ -73,12 +75,14 @@ export default function RetrospectivePage() {
           const retroRes = await fetch(`/api/retrospectives?sprintId=${sprintId}`)
           if (retroRes.ok) {
             const retroData = await retroRes.json()
-            setRetrospective(retroData)
+            setRetrospective(retroData.retrospective)
+            setBilanCalcule(retroData.bilanCalcule || '')
+            setStats(retroData.stats || null)
             setFormData({
-              bilan: retroData.bilan || '',
-              pointsForts: retroData.pointsForts || '',
-              pointsFaibles: retroData.pointsFaibles || '',
-              ameliorations: retroData.ameliorations || ''
+              bilan: retroData.retrospective?.bilan || '',
+              pointsForts: retroData.retrospective?.pointsForts || '',
+              pointsFaibles: retroData.retrospective?.pointsFaibles || '',
+              ameliorations: retroData.retrospective?.ameliorations || ''
             })
           } else {
             // Créer une rétrospective vide
@@ -289,6 +293,16 @@ export default function RetrospectivePage() {
           </div>
         </div>
       </section>
+
+      {/* Bilan automatique calculé */}
+      {bilanCalcule && (
+        <section style={{ marginBottom: '30px', padding: '16px', backgroundColor: '#f0f8ff', borderRadius: '4px', border: '2px solid #0066cc', borderLeft: '4px solid #0066cc' }}>
+          <h2 style={{ color: '#0066cc', margin: '0 0 16px 0' }}>🤖 Bilan Automatique</h2>
+          <p style={{ whiteSpace: 'pre-wrap', color: '#333', margin: 0, lineHeight: '1.6', fontFamily: 'monospace', fontSize: '13px' }}>
+            {bilanCalcule}
+          </p>
+        </section>
+      )}
 
       {/* Bilan global */}
       <SectionEditable

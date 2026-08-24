@@ -27,7 +27,13 @@ export default async function AdminPage() {
         prisma.sprint.findMany({
           where: global ? {} : { squadId: moi.squadId ?? null },
           orderBy: { numero: 'desc' },
-          include: { semaines: { orderBy: { numero: 'asc' } }, squad: { select: { id: true, nom: true } } },
+          include: { 
+            semaines: { 
+              orderBy: { numero: 'asc' },
+              include: { entrees: true }
+            }, 
+            squad: { select: { id: true, nom: true } } 
+          },
         }),
         prisma.squad.findMany({
           where: global ? {} : { id: moi.squadId ?? '—' },

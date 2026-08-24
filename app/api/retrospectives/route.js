@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { headers } from 'next/headers'
+import { calculerBilan } from '@/lib/retrospective'
 
 export async function GET(req) {
   try {
@@ -50,7 +51,23 @@ export async function GET(req) {
       }
     }
 
-    return new Response(JSON.stringify(retrospective), { status: 200 })
+    // Calculer le bilan automatiquement
+    try {
+      const bilanData = await calculerBilan(sprintId)
+      return new Response(JSON.stringify({
+        retrospective,
+        bilanCalcule: bilanData?.bilanAutomatique || '',
+        stats: bilanData?.stats || null
+      }), { status: 200 })
+    } catch (err) {
+      console.error('[calculerBilan error]', err)
+      // Retourner sans bilan si erreur dans le calcul
+      return new Response(JSON.stringify({
+        retrospective,
+        bilanCalcule: '',
+        stats: null
+      }), { status: 200 })
+    }
   } catch (err) {
     console.error('[GET retrospective]', err)
     return new Response(JSON.stringify({ error: err.message }), { status: 500 })

@@ -102,7 +102,8 @@ export default function ConsoleAdmin({
     // Détacher les membres, supprimer les sprints puis la squad
     const sprintsSquad = sprints.filter((s) => s.squad?.id === id);
     for (const s of sprintsSquad) {
-      await appel(`/api/sprints/${s.id}`, { method: 'DELETE' });
+      // Force delete pour admin
+      await appel(`/api/sprints/${s.id}?force=true`, { method: 'DELETE' });
     }
     // Détacher les membres
     const membresSquad = comptes.filter((c) => c.squadId === id);
@@ -151,7 +152,8 @@ export default function ConsoleAdmin({
 
   const supprimerSprint = async (sprintCible) => {
     if (!confirm(`Supprimer ${sprintCible.libelle} ? Cette action est définitive.`)) return;
-    const d = await appel(`/api/sprints/${sprintCible.id}`, { method: 'DELETE' });
+    // Force delete pour admin (peut contenir des saisies)
+    const d = await appel(`/api/sprints/${sprintCible.id}?force=true`, { method: 'DELETE' });
     if (!d) return;
     setSprints(sprints.filter((s) => s.id !== sprintCible.id));
     setMsg({ t: 'ok', m: `${sprintCible.libelle} supprimé.` });

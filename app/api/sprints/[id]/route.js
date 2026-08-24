@@ -140,22 +140,38 @@ export async function PATCH(req, { params }) {
   return NextResponse.json(await prisma.sprint.update({ where: { id }, data }));
 }
 
-/** Suppression d'un sprint créé par erreur : refusée dès qu'il porte des saisies. */
-export async function DELETE(_req, { params }) {
+/** Suppression d'un sprint :
+ * - Normally refusée si saisies (clôturez plutôt)
+ * - Admin can force delete with force=true parameter
+ */
+export async function DELETE(req, { params }) {
   const moi = await utilisateurCourant();
   const { id } = await params;
   const { sprint, erreur } = await accessible(moi, id);
   if (erreur) return erreur;
 
+  // Check if force delete requested
+  const url = new URL(req.url);
+  const forceDelete = url.searchParams.get('force') === 'true';
+  const isAdmin = peut(moi, 'compte.gerer');
+
   const saisies = await prisma.entree.count({ where: { semaineId: { in: sprint.semaines.map((s) => s.id) } } });
-  if (saisies > 0) {
+  
+  if (saisies > 0 && !forceDelete) {
     return NextResponse.json(
       { error: `Ce sprint porte ${saisies} saisie(s) : clôturez-le plutôt que de le supprimer` },
       { status: 409 },
     );
   }
 
+  if (saisies > 0 && forceDelete && !isAdmin) {
+    return NextResponse.json(
+      { error: 'Vous n\'avez pas les permissions pour forcer la suppression' },
+      { status: 403 },
+    );
+  }
+
   await prisma.sprint.delete({ where: { id } });
-  publierBdEnFond('suppression d’un sprint');
-  return NextResponse.json({ ok: true });
+  publierBdEnFond(`suppression d'un sprint (force=${forceDelete})`);
+  return NextResponse.json({ ok: true, message: `Sprint #${sprint.numero} supprimé` });
 }
