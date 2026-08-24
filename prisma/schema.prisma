@@ -70,8 +70,24 @@ model Sprint {
   squad          Squad?    @relation(fields: [squadId], references: [id])
   squadId        String?
   semaines       Semaine[]
+  retrospective  Retrospective?
 
   @@unique([squadId, numero])
+}
+
+/** Rétrospective et bilan d'un sprint : points forts, faibles, améliorations. */
+model Retrospective {
+  id             String   @id @default(cuid())
+  sprint         Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  sprintId       String   @unique
+  bilan          String?                      // résumé global du sprint
+  pointsForts    String?                      // ce qui a bien marché
+  pointsFaibles  String?                      // ce qui n'a pas marché
+  ameliorations  String?                      // propositions pour le prochain sprint
+  animateurId    String?                      // qui a animé la rétro
+  animateurNom   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Semaine {

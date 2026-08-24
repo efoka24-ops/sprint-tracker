@@ -31,6 +31,26 @@ export default async function Rapport({ searchParams }) {
     <div className="rapport">
       <BoutonImpression semaineId={semaine.id} />
 
+      {/* Navigation du rapport */}
+      <div style={{ marginBottom: '20px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+        {semaine.sprint.cloture && (
+          <a
+            href={`/rapport/retrospective?sprintId=${semaine.sprint.id}`}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#FF7900',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '4px',
+              fontWeight: 'bold',
+              fontSize: '14px'
+            }}
+          >
+            → Rétrospective du Sprint
+          </a>
+        )}
+      </div>
+
       <div className="rapport-entete">
         <div>
           <div className="entete-kicker">
