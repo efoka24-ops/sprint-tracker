@@ -37,6 +37,7 @@ export default function ConsoleAdmin({
   });
   const [nomSquad, setNomSquad] = useState('');
   const [sprint, setSprint] = useState({ numero: '', dateDebut: DEMAIN(), dateFin: DANS(20) });
+  const [sprintSquadId, setSprintSquadId] = useState(moi.squadId ?? '');
 
   const appel = async (url, opts) => {
     const r = await fetch(url, {
@@ -96,11 +97,24 @@ export default function ConsoleAdmin({
   };
 
   const supprimerSquad = async (id, nom) => {
-    if (!confirm(`Supprimer la squad « ${nom} » ?`)) return;
+    if (!confirm(`Supprimer la squad « ${nom} » ?\n\nAttention : tous ses sprints et entrées seront supprimés, les membres seront détachés.`)) return;
+    setMsg(null);
+    // Détacher les membres, supprimer les sprints puis la squad
+    const sprintsSquad = sprints.filter((s) => s.squad?.id === id);
+    for (const s of sprintsSquad) {
+      await appel(`/api/sprints/${s.id}`, { method: 'DELETE' });
+    }
+    // Détacher les membres
+    const membresSquad = comptes.filter((c) => c.squadId === id);
+    for (const c of membresSquad) {
+      await appel(`/api/utilisateurs/${c.id}`, { method: 'PATCH', body: JSON.stringify({ squadId: null }) });
+    }
     const d = await appel(`/api/squads/${id}`, { method: 'DELETE' });
     if (!d) return;
     setSquads(squads.filter((s) => s.id !== id));
-    setMsg({ t: 'ok', m: `Squad « ${nom} » supprimée.` });
+    setSprints(sprints.filter((s) => s.squad?.id !== id));
+    setComptes(comptes.map((c) => c.squadId === id ? { ...c, squadId: null, squad: null } : c));
+    setMsg({ t: 'ok', m: `Squad « ${nom} » supprimée. ${membresSquad.length} membre(s) détaché(s), ${sprintsSquad.length} sprint(s) supprimé(s).` });
     router.refresh();
   };
 
@@ -151,7 +165,7 @@ export default function ConsoleAdmin({
       method: 'POST',
       body: JSON.stringify({
         numero: Number(sprint.numero), dateDebut: sprint.dateDebut, dateFin: sprint.dateFin,
-        ...(moi.global && nouveau.squadId ? { squadId: nouveau.squadId } : {}),
+        ...(moi.global && sprintSquadId ? { squadId: sprintSquadId } : {}),
       }),
     });
     setBusy(false);
@@ -434,6 +448,15 @@ export default function ConsoleAdmin({
           {maSquad ? ` de la squad ${maSquad.nom}.` : ' de la squad.'}
         </p>
         <div className="row">
+          {moi.global && squads.length > 0 && (
+            <div style={{ flex: 1.4 }} className="field">
+              <label>Squad</label>
+              <select value={sprintSquadId} onChange={(e) => setSprintSquadId(e.target.value)} required>
+                <option value="">— Choisir une squad —</option>
+                {squads.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
+              </select>
+            </div>
+          )}
           <div style={{ flex: 1 }} className="field">
             <label>Numéro</label>
             <input type="number" min="1" value={sprint.numero}
