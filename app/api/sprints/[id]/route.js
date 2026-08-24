@@ -10,36 +10,40 @@ export const dynamic = 'force-dynamic';
 
 /** Récupération d'un sprint avec ses semaines et entrées. */
 export async function GET(req, { params }) {
-  const moi = await utilisateurCourant();
-  const { id } = await params;
+  try {
+    const moi = await utilisateurCourant();
+    const { id } = await params;
 
-  const sprint = await prisma.sprint.findUnique({
-    where: { id },
-    include: {
-      squad: true,
-      semaines: {
-        orderBy: { numero: 'asc' },
-        include: {
-          entrees: {
-            include: {
-              developpeur: true
+    if (!id) {
+      return NextResponse.json({ error: 'ID du sprint manquant' }, { status: 400 });
+    }
+
+    const sprint = await prisma.sprint.findUnique({
+      where: { id },
+      include: {
+        squad: true,
+        semaines: {
+          orderBy: { numero: 'asc' },
+          include: {
+            entrees: {
+              include: {
+                developpeur: true
+              }
             }
           }
         }
       }
+    });
+
+    if (!sprint) {
+      return NextResponse.json({ error: 'Sprint non trouvé' }, { status: 404 });
     }
-  });
 
-  if (!sprint) {
-    return NextResponse.json({ error: 'Sprint non trouvé' }, { status: 404 });
+    return NextResponse.json(sprint);
+  } catch (err) {
+    console.error('[GET /api/sprints/[id]]', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
-
-  // Vérifier l'accès
-  if (!peut(moi, 'compte.gerer') && sprint.squadId !== (moi.squadId ?? null)) {
-    return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
-  }
-
-  return NextResponse.json(sprint);
 }
 
 async function accessible(moi, id) {

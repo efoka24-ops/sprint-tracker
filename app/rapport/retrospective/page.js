@@ -11,7 +11,7 @@ export default function RetrospectivePage() {
 
   const [sprint, setSprint] = useState(null)
   const [retrospective, setRetrospective] = useState(null)
-  const [editing, setEditing] = useState(false)
+  const [editingSection, setEditingSection] = useState(null) // 'bilan', 'pointsForts', 'pointsFaibles', 'ameliorations'
   const [formData, setFormData] = useState({
     bilan: '',
     pointsForts: '',
@@ -20,10 +20,37 @@ export default function RetrospectivePage() {
   })
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
-    if (!sprintId) {
-      setLoading(false)
+    // Vérifier l'authentification
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.utilisateur) {
+            setIsAuthenticated(true)
+          } else {
+            router.push('/connexion')
+            return
+          }
+        } else {
+          router.push('/connexion')
+          return
+        }
+      } catch (err) {
+        console.error('Erreur authentification:', err)
+        router.push('/connexion')
+      }
+    }
+    
+    checkAuth()
+  }, [router])
+
+  useEffect(() => {
+    if (!sprintId || !isAuthenticated) {
+      if (sprintId) setLoading(false)
       return
     }
 
@@ -31,7 +58,13 @@ export default function RetrospectivePage() {
       try {
         // Récupérer le sprint
         const sprintRes = await fetch(`/api/sprints/${sprintId}`)
-        if (!sprintRes.ok) throw new Error('Sprint non trouvé')
+        if (!sprintRes.ok) {
+          if (sprintRes.status === 401) {
+            router.push('/connexion')
+            return
+          }
+          throw new Error('Sprint non trouvé')
+        }
         const sprintData = await sprintRes.json()
         setSprint(sprintData)
 
@@ -71,21 +104,21 @@ export default function RetrospectivePage() {
     }
 
     fetchData()
-  }, [sprintId])
+  }, [sprintId, isAuthenticated, router])
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSave = async () => {
+  const handleSave = async (section) => {
     try {
       const res = await fetch('/api/retrospectives', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sprintId,
-          ...formData
+          [section]: formData[section]
         })
       })
 
@@ -93,13 +126,110 @@ export default function RetrospectivePage() {
 
       const data = await res.json()
       setRetrospective(data)
-      setEditing(false)
-      setMessage('Rétrospective sauvegardée ✓')
+      setEditingSection(null)
+      setMessage(`${section} sauvegardé ✓`)
       setTimeout(() => setMessage(''), 3000)
     } catch (err) {
       console.error('Erreur:', err)
       setMessage('Erreur lors de la sauvegarde')
     }
+  }
+
+  const handleCancel = (section) => {
+    setFormData(prev => ({
+      ...prev,
+      [section]: retrospective?.[section] || ''
+    }))
+    setEditingSection(null)
+  }
+
+  const SectionEditable = ({ title, section, bgColor, titleColor, icon, placeholder }) => {
+    const isEditing = editingSection === section
+    const content = retrospective?.[section] || ''
+    const isEmpty = !content || content.trim() === ''
+
+    return (
+      <section style={{ marginBottom: '30px', padding: '16px', backgroundColor: bgColor, borderRadius: '4px', border: `1px solid ${titleColor}20` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ color: titleColor, margin: 0 }}>{icon} {title}</h2>
+          {!isEditing && (
+            <button
+              onClick={() => setEditingSection(section)}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: titleColor,
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '12px'
+              }}
+            >
+              ✎ Éditer
+            </button>
+          )}
+        </div>
+
+        {isEditing ? (
+          <>
+            <textarea
+              name={section}
+              value={formData[section]}
+              onChange={handleChange}
+              placeholder={placeholder}
+              style={{
+                width: '100%',
+                minHeight: '100px',
+                padding: '8px',
+                marginTop: '12px',
+                marginBottom: '12px',
+                borderRadius: '4px',
+                border: `1px solid ${titleColor}`,
+                fontFamily: 'inherit'
+              }}
+            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => handleSave(section)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: titleColor,
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                ✓ Enregistrer
+              </button>
+              <button
+                onClick={() => handleCancel(section)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#e5e7eb',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Annuler
+              </button>
+            </div>
+          </>
+        ) : (
+          <p style={{
+            whiteSpace: 'pre-wrap',
+            color: isEmpty ? '#999' : '#111',
+            marginTop: '12px',
+            lineHeight: '1.6'
+          }}>
+            {isEmpty ? 'À remplir' : content}
+          </p>
+        )}
+      </section>
+    )
   }
 
   if (loading) {
@@ -140,7 +270,7 @@ export default function RetrospectivePage() {
 
       {/* Aperçu du sprint */}
       <section style={{ marginBottom: '30px', padding: '16px', backgroundColor: '#f9f9f9', borderRadius: '4px', border: '1px solid #eee' }}>
-        <h2>Aperçu du Sprint</h2>
+        <h2>📊 Aperçu du Sprint</h2>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
           <div>
             <strong>Sprint:</strong> {sprint.libelle}
@@ -161,161 +291,44 @@ export default function RetrospectivePage() {
       </section>
 
       {/* Bilan global */}
-      <section style={{ marginBottom: '30px', padding: '16px', backgroundColor: '#f9f9f9', borderRadius: '4px', border: '1px solid #eee' }}>
-        <h2>Bilan Global</h2>
-        {editing ? (
-          <textarea
-            name="bilan"
-            value={formData.bilan}
-            onChange={handleChange}
-            placeholder="Résumé global du sprint"
-            style={{
-              width: '100%',
-              minHeight: '100px',
-              padding: '8px',
-              borderRadius: '4px',
-              border: '1px solid #ddd',
-              fontFamily: 'inherit'
-            }}
-          />
-        ) : (
-          <p style={{ whiteSpace: 'pre-wrap', color: retrospective?.bilan ? '#111' : '#999' }}>
-            {retrospective?.bilan || 'Aucun bilan pour le moment'}
-          </p>
-        )}
-      </section>
+      <SectionEditable
+        title="Bilan Global"
+        section="bilan"
+        bgColor="#f9f9f9"
+        titleColor="#111"
+        icon="📋"
+        placeholder="Résumé global du sprint"
+      />
 
       {/* Points forts */}
-      <section style={{ marginBottom: '30px', padding: '16px', backgroundColor: '#f0fdf4', borderRadius: '4px', border: '1px solid #bbf7d0' }}>
-        <h2 style={{ color: '#16a34a' }}>Points Forts</h2>
-        {editing ? (
-          <textarea
-            name="pointsForts"
-            value={formData.pointsForts}
-            onChange={handleChange}
-            placeholder="Ce qui a bien marché"
-            style={{
-              width: '100%',
-              minHeight: '100px',
-              padding: '8px',
-              borderRadius: '4px',
-              border: '1px solid #ddd',
-              fontFamily: 'inherit'
-            }}
-          />
-        ) : (
-          <p style={{ whiteSpace: 'pre-wrap', color: retrospective?.pointsForts ? '#111' : '#999' }}>
-            {retrospective?.pointsForts || 'À remplir'}
-          </p>
-        )}
-      </section>
+      <SectionEditable
+        title="Points Forts"
+        section="pointsForts"
+        bgColor="#f0fdf4"
+        titleColor="#16a34a"
+        icon="✓"
+        placeholder="Ce qui a bien marché"
+      />
 
       {/* Points à améliorer */}
-      <section style={{ marginBottom: '30px', padding: '16px', backgroundColor: '#fef2f2', borderRadius: '4px', border: '1px solid #fecaca' }}>
-        <h2 style={{ color: '#dc2626' }}>Points à Améliorer</h2>
-        {editing ? (
-          <textarea
-            name="pointsFaibles"
-            value={formData.pointsFaibles}
-            onChange={handleChange}
-            placeholder="Ce qui n'a pas marché, ce qui peut être amélioré"
-            style={{
-              width: '100%',
-              minHeight: '100px',
-              padding: '8px',
-              borderRadius: '4px',
-              border: '1px solid #ddd',
-              fontFamily: 'inherit'
-            }}
-          />
-        ) : (
-          <p style={{ whiteSpace: 'pre-wrap', color: retrospective?.pointsFaibles ? '#111' : '#999' }}>
-            {retrospective?.pointsFaibles || 'À remplir'}
-          </p>
-        )}
-      </section>
+      <SectionEditable
+        title="Points à Améliorer"
+        section="pointsFaibles"
+        bgColor="#fef2f2"
+        titleColor="#dc2626"
+        icon="⚠"
+        placeholder="Ce qui n'a pas marché, ce qui peut être amélioré"
+      />
 
       {/* Améliorations pour le prochain sprint */}
-      <section style={{ marginBottom: '30px', padding: '16px', backgroundColor: '#fefce8', borderRadius: '4px', border: '1px solid #fde047' }}>
-        <h2 style={{ color: '#ca8a04' }}>Améliorations pour le Prochain Sprint</h2>
-        {editing ? (
-          <textarea
-            name="ameliorations"
-            value={formData.ameliorations}
-            onChange={handleChange}
-            placeholder="Actions et améliorations à mettre en place"
-            style={{
-              width: '100%',
-              minHeight: '100px',
-              padding: '8px',
-              borderRadius: '4px',
-              border: '1px solid #ddd',
-              fontFamily: 'inherit'
-            }}
-          />
-        ) : (
-          <p style={{ whiteSpace: 'pre-wrap', color: retrospective?.ameliorations ? '#111' : '#999' }}>
-            {retrospective?.ameliorations || 'À remplir'}
-          </p>
-        )}
-      </section>
-
-      {/* Boutons d'édition */}
-      <div style={{ display: 'flex', gap: '12px', marginTop: '30px' }}>
-        {editing ? (
-          <>
-            <button
-              onClick={handleSave}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: '#16a34a',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              Enregistrer
-            </button>
-            <button
-              onClick={() => {
-                setEditing(false)
-                setFormData({
-                  bilan: retrospective?.bilan || '',
-                  pointsForts: retrospective?.pointsForts || '',
-                  pointsFaibles: retrospective?.pointsFaibles || '',
-                  ameliorations: retrospective?.ameliorations || ''
-                })
-              }}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: '#e5e7eb',
-                border: '1px solid #d1d5db',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Annuler
-            </button>
-          </>
-        ) : (
-          <button
-            onClick={() => setEditing(true)}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#FF7900',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
-          >
-            Éditer
-          </button>
-        )}
-      </div>
+      <SectionEditable
+        title="Améliorations pour le Prochain Sprint"
+        section="ameliorations"
+        bgColor="#fefce8"
+        titleColor="#ca8a04"
+        icon="→"
+        placeholder="Actions et améliorations à mettre en place"
+      />
 
       {message && (
         <div style={{
