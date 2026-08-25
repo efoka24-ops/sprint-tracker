@@ -113,14 +113,24 @@ export default function ConsoleAdmin({
   };
 
   const supprimerSquad = async (id, nom) => {
-    if (!confirm(`Supprimer la squad « ${nom} » ?\n\nAttention : tous ses sprints et entrées seront supprimés, les membres seront détachés.`)) return;
+    if (!confirm(`Supprimer la squad « ${nom} » ?\n\nSes sprints vides seront supprimés et ses membres détachés. Un sprint qui porte des saisies bloque la suppression (clôturez-le d’abord).`)) return;
     setMsg(null);
-    // Détacher les membres, supprimer les sprints puis la squad
+
+    // On supprime d'abord les sprints vides ; un sprint avec des saisies (409) bloque tout.
     const sprintsSquad = sprints.filter((s) => s.squad?.id === id);
+    const bloquants = [];
     for (const s of sprintsSquad) {
-      await appel(`/api/sprints/${s.id}`, { method: 'DELETE' });
+      const r = await fetch(`/api/sprints/${s.id}`, { method: 'DELETE' });
+      if (!r.ok) bloquants.push(s.libelle);
     }
-    // Détacher les membres
+    if (bloquants.length) {
+      return setMsg({
+        t: 'err',
+        m: `Squad non supprimée : ${bloquants.join(', ')} porte(nt) des saisies. Clôturez ce(s) sprint(s) (ou supprimez ses saisies) avant de retenter.`,
+      });
+    }
+
+    // Détacher les membres puis supprimer la squad, maintenant vide de sprints.
     const membresSquad = comptes.filter((c) => c.squadId === id);
     for (const c of membresSquad) {
       await appel(`/api/utilisateurs/${c.id}`, { method: 'PATCH', body: JSON.stringify({ squadId: null }) });
