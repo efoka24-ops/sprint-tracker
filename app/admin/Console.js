@@ -56,11 +56,23 @@ export default function ConsoleAdmin({
   const [sprintSquadId, setSprintSquadId] = useState(moi.squadId ?? '');
 
   const appel = async (url, opts) => {
-    const r = await fetch(url, {
-      headers: opts?.body ? { 'Content-Type': 'application/json' } : undefined, ...opts,
-    });
-    const d = await r.json();
-    if (!r.ok) { setMsg({ t: 'err', m: d.error }); return null; }
+    let r;
+    try {
+      r = await fetch(url, {
+        headers: opts?.body ? { 'Content-Type': 'application/json' } : undefined, ...opts,
+      });
+    } catch {
+      setMsg({ t: 'err', m: 'Connexion au serveur impossible. Réessayez.' });
+      return null;
+    }
+    let d;
+    try {
+      d = await r.json();
+    } catch {
+      setMsg({ t: 'err', m: `Réponse inattendue du serveur (${r.status}).` });
+      return null;
+    }
+    if (!r.ok) { setMsg({ t: 'err', m: d.error ?? `Erreur ${r.status}` }); return null; }
     return d;
   };
 
@@ -120,7 +132,12 @@ export default function ConsoleAdmin({
     const sprintsSquad = sprints.filter((s) => s.squad?.id === id);
     const bloquants = [];
     for (const s of sprintsSquad) {
-      const r = await fetch(`/api/sprints/${s.id}`, { method: 'DELETE' });
+      let r;
+      try {
+        r = await fetch(`/api/sprints/${s.id}`, { method: 'DELETE' });
+      } catch {
+        return setMsg({ t: 'err', m: 'Connexion au serveur impossible. Réessayez.' });
+      }
       if (!r.ok) bloquants.push(s.libelle);
     }
     if (bloquants.length) {
