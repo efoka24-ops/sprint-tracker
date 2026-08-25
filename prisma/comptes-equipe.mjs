@@ -22,7 +22,7 @@ const provisoire = () => {
 
 /** `ancienEmail` sert à retrouver le compte créé par le seed de démonstration. */
 const EQUIPE = [
-  { ancienEmail: 'emm.foka@gmail.com', nom: 'FOKA Emmanuel', email: 'emmanuel.foka@orange.com', role: 'SUPER_ADMIN' },
+  { ancienEmail: 'emm.foka@gmail.com', nom: 'FOKA Emmanuel', email: 'emmanuel.foka@orange.com', role: 'SCRUM_MASTER' },
   { ancienEmail: 'herve@orange.cm', nom: 'FOGUE Hervé', email: 'herve.soubgui@orange.com', role: 'TECH_LEAD' },
   { ancienEmail: 'arafat@orange.cm', nom: 'YAYA Arafat', email: 'arafat.yaya@orange.com', role: 'DEVELOPPEUR' },
   { ancienEmail: 'ivan@orange.cm', nom: 'MBENG Ivan', email: 'ivan.mbeng@orange.com', role: 'DEVELOPPEUR' },

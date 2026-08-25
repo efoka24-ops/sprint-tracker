@@ -20,7 +20,7 @@ async function main() {
       nom: 'Demo User',
       email: 'demo@example.com',
       motDePasse: hashedPassword,
-      role: 'SUPER_ADMIN',
+      role: 'SCRUM_MASTER',
       actif: true,
       doitChangerMdp: false
     }

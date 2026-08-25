@@ -21,7 +21,7 @@ async function main() {
       nom: 'Test User',
       email: 'test@example.com',
       motDePasse: hashedPassword,
-      role: 'SUPER_ADMIN',
+      role: 'SCRUM_MASTER',
       actif: true,
       doitChangerMdp: false
     }

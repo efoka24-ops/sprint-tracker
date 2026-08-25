@@ -61,17 +61,29 @@ async function main() {
   });
   const demo = process.argv.includes('--demo');
 
-  const email = (process.env.SUPER_ADMIN_EMAIL || 'emm.foka@gmail.com').toLowerCase();
+  // Le super admin administre la plateforme ; il n'anime aucune squad.
+  const email = (process.env.SUPER_ADMIN_EMAIL || 'sudoadmin@orange.com').toLowerCase();
   const mdp = process.env.SUPER_ADMIN_PASSWORD || provisoire();
   const impose = !process.env.SUPER_ADMIN_PASSWORD;
 
-  const admin = await compte(process.env.SUPER_ADMIN_NOM || 'Emmanuel FOKA', email, 'SUPER_ADMIN', mdp, impose, squad.id);
+  const admin = await compte(process.env.SUPER_ADMIN_NOM || 'Sudo Admin', email, 'SUPER_ADMIN', mdp, impose, null);
   console.log(`Super admin : ${admin.email}`);
   if (impose) console.log(`Mot de passe provisoire (à changer à la 1re connexion) : ${mdp}`);
 
+  // Le Scrum Master anime la squad : rôle distinct du super admin.
+  const emailSm = (process.env.SCRUM_MASTER_EMAIL || 'emm.foka@gmail.com').toLowerCase();
+  const mdpSm = process.env.SCRUM_MASTER_PASSWORD || provisoire();
+  const imposeSm = !process.env.SCRUM_MASTER_PASSWORD;
+
+  const scrumMaster = await compte(
+    process.env.SCRUM_MASTER_NOM || 'Emmanuel FOKA', emailSm, 'SCRUM_MASTER', mdpSm, imposeSm, squad.id,
+  );
+  console.log(`Scrum Master : ${scrumMaster.email}`);
+  if (imposeSm) console.log(`Mot de passe provisoire (à changer à la 1re connexion) : ${mdpSm}`);
+
   if (!demo) return console.log('Seed terminé (comptes uniquement). Ajoutez --demo pour le sprint de démonstration.');
 
-  const devs = { [admin.nom]: admin };
+  const devs = { [scrumMaster.nom]: scrumMaster };
   for (const d of EQUIPE_DEMO) {
     const mdpDev = provisoire();
     const u = await compte(d.nom, `${sansAccent(d.nom)}@orange.cm`, d.role, mdpDev, true, squad.id);

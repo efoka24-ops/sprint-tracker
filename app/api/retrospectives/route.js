@@ -1,106 +1,85 @@
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { headers } from 'next/headers'
+import { utilisateurCourant } from '@/lib/auth'
+import { peut } from '@/lib/roles'
 import { calculerBilan } from '@/lib/retrospective'
 
+export const dynamic = 'force-dynamic'
+
+/**
+ * Contrôle d'accès de la rétrospective — le rôle porte tous les droits :
+ *   lecture  → tout compte pouvant consulter le tableau de bord
+ *   écriture → Scrum Master, Tech Lead et super admin (droit « semaine.cloturer »)
+ * Hors super admin, le sprint visé doit appartenir à la squad de l'utilisateur.
+ */
+async function controler(sprintId, droit) {
+  const moi = await utilisateurCourant()
+  if (!moi) return { erreur: NextResponse.json({ error: 'Non connecté' }, { status: 401 }) }
+  if (!peut(moi, droit)) {
+    return { erreur: NextResponse.json({ error: 'Droits insuffisants' }, { status: 403 }) }
+  }
+  if (!sprintId) {
+    return { erreur: NextResponse.json({ error: 'sprintId manquant' }, { status: 400 }) }
+  }
+  const sprint = await prisma.sprint.findUnique({ where: { id: sprintId }, select: { squadId: true } })
+  if (!sprint) return { erreur: NextResponse.json({ error: 'Sprint introuvable' }, { status: 404 }) }
+  if (!peut(moi, 'dashboard.tout') && sprint.squadId !== (moi.squadId ?? null)) {
+    return { erreur: NextResponse.json({ error: 'Ce sprint n’est pas dans votre périmètre' }, { status: 403 }) }
+  }
+  return { moi }
+}
+
+/** Rétrospective d'un sprint, complétée du bilan calculé automatiquement. */
 export async function GET(req) {
   try {
-    // Vérifier la session
-    const headersList = await headers()
-    const cookieHeader = headersList.get('cookie') || ''
-    const sessionCookie = cookieHeader.split('; ').find(c => c.startsWith('st_session='))?.split('=')[1]
+    const sprintId = new URL(req.url).searchParams.get('sprintId')
+    const { erreur } = await controler(sprintId, 'dashboard.voir')
+    if (erreur) return erreur
 
-    if (!sessionCookie) {
-      return new Response(JSON.stringify({ error: 'Non authentifié' }), { status: 401 })
-    }
-
-    const { searchParams } = new URL(req.url)
-    const sprintId = searchParams.get('sprintId')
-
-    if (!sprintId) {
-      return new Response(JSON.stringify({ error: 'sprintId manquant' }), { status: 400 })
-    }
-
-    let retrospective = await prisma.retrospective.findUnique({
-      where: { sprintId }
-    })
-
-    // Si n'existe pas, créer une vide
+    let retrospective = await prisma.retrospective.findUnique({ where: { sprintId } })
     if (!retrospective) {
-      try {
-        retrospective = await prisma.retrospective.create({
-          data: {
-            sprintId,
-            bilan: null,
-            pointsForts: null,
-            pointsFaibles: null,
-            ameliorations: null
-          }
-        })
-      } catch (err) {
-        // Table n'existe peut-être pas en dev, retourner une structure vide
-        retrospective = {
-          id: 'temp-' + Date.now(),
-          sprintId,
-          bilan: null,
-          pointsForts: null,
-          pointsFaibles: null,
-          ameliorations: null,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
+      // Lecture seule : on n'écrit rien en base, on renvoie une coquille vide.
+      retrospective = {
+        id: null, sprintId,
+        bilan: null, pointsForts: null, pointsFaibles: null, ameliorations: null,
       }
     }
 
-    // Calculer le bilan automatiquement
     try {
       const bilanData = await calculerBilan(sprintId)
-      return new Response(JSON.stringify({
+      return NextResponse.json({
         retrospective,
         bilanCalcule: bilanData?.bilanAutomatique || '',
-        stats: bilanData?.stats || null
-      }), { status: 200 })
+        stats: bilanData?.stats || null,
+      })
     } catch (err) {
       console.error('[calculerBilan error]', err)
-      // Retourner sans bilan si erreur dans le calcul
-      return new Response(JSON.stringify({
-        retrospective,
-        bilanCalcule: '',
-        stats: null
-      }), { status: 200 })
+      return NextResponse.json({ retrospective, bilanCalcule: '', stats: null })
     }
   } catch (err) {
     console.error('[GET retrospective]', err)
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 })
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
 
+/** Création ou mise à jour complète — réservée aux animateurs de la rétrospective. */
 export async function POST(req) {
   try {
-    const headersList = await headers()
-    const cookieHeader = headersList.get('cookie') || ''
-    const sessionCookie = cookieHeader.split('; ').find(c => c.startsWith('st_session='))?.split('=')[1]
-
-    if (!sessionCookie) {
-      return new Response(JSON.stringify({ error: 'Non authentifié' }), { status: 401 })
-    }
-
     const body = await req.json()
-    const { sprintId, bilan, pointsForts, pointsFaibles, ameliorations, animateurId, animateurNom } = body
+    const { sprintId, bilan, pointsForts, pointsFaibles, ameliorations } = body
+    const { erreur, moi } = await controler(sprintId, 'semaine.cloturer')
+    if (erreur) return erreur
 
-    if (!sprintId) {
-      return new Response(JSON.stringify({ error: 'sprintId manquant' }), { status: 400 })
-    }
-
-    // Créer ou mettre à jour la rétrospective
+    // L'animateur est celui qui écrit : il n'est jamais transmis par le client.
     const retrospective = await prisma.retrospective.upsert({
       where: { sprintId },
       update: {
-        bilan: bilan || undefined,
-        pointsForts: pointsForts || undefined,
-        pointsFaibles: pointsFaibles || undefined,
-        ameliorations: ameliorations || undefined,
-        animateurId: animateurId || undefined,
-        animateurNom: animateurNom || undefined,
+        bilan: bilan ?? undefined,
+        pointsForts: pointsForts ?? undefined,
+        pointsFaibles: pointsFaibles ?? undefined,
+        ameliorations: ameliorations ?? undefined,
+        animateurId: moi.id,
+        animateurNom: moi.nom,
       },
       create: {
         sprintId,
@@ -108,70 +87,44 @@ export async function POST(req) {
         pointsForts: pointsForts || null,
         pointsFaibles: pointsFaibles || null,
         ameliorations: ameliorations || null,
-        animateurId: animateurId || null,
-        animateurNom: animateurNom || null,
-      }
+        animateurId: moi.id,
+        animateurNom: moi.nom,
+      },
     })
-
-    return new Response(JSON.stringify(retrospective), { status: 201 })
+    return NextResponse.json(retrospective, { status: 201 })
   } catch (err) {
     console.error('[POST retrospective]', err)
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 })
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
 
+/** Mise à jour d'une section (bilan, points forts, points faibles, améliorations). */
 export async function PATCH(req) {
   try {
-    const headersList = await headers()
-    const cookieHeader = headersList.get('cookie') || ''
-    const sessionCookie = cookieHeader.split('; ').find(c => c.startsWith('st_session='))?.split('=')[1]
+    const { sprintId, bilan, pointsForts, pointsFaibles, ameliorations } = await req.json()
+    const { erreur, moi } = await controler(sprintId, 'semaine.cloturer')
+    if (erreur) return erreur
 
-    if (!sessionCookie) {
-      return new Response(JSON.stringify({ error: 'Non authentifié' }), { status: 401 })
-    }
+    // Liste blanche : le client ne choisit pas les colonnes qu'il écrit.
+    const champs = { bilan, pointsForts, pointsFaibles, ameliorations }
+    const maj = Object.fromEntries(Object.entries(champs).filter(([, v]) => v !== undefined))
 
-    const body = await req.json()
-    const { sprintId, ...updates } = body
-
-    if (!sprintId) {
-      return new Response(JSON.stringify({ error: 'sprintId manquant' }), { status: 400 })
-    }
-
-    try {
-      const retrospective = await prisma.retrospective.update({
-        where: { sprintId },
-        data: updates
-      })
-      return new Response(JSON.stringify(retrospective), { status: 200 })
-    } catch (err) {
-      // Si update échoue (table n'existe pas), essayer upsert ou créer
-      try {
-        const retrospective = await prisma.retrospective.upsert({
-          where: { sprintId },
-          update: updates,
-          create: {
-            sprintId,
-            ...updates,
-            bilan: updates.bilan ?? null,
-            pointsForts: updates.pointsForts ?? null,
-            pointsFaibles: updates.pointsFaibles ?? null,
-            ameliorations: updates.ameliorations ?? null
-          }
-        })
-        return new Response(JSON.stringify(retrospective), { status: 200 })
-      } catch (err2) {
-        // Table n'existe pas, retourner quand même la donnée
-        return new Response(JSON.stringify({
-          id: 'temp-' + Date.now(),
-          sprintId,
-          ...updates,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }), { status: 200 })
-      }
-    }
+    const retrospective = await prisma.retrospective.upsert({
+      where: { sprintId },
+      update: { ...maj, animateurId: moi.id, animateurNom: moi.nom },
+      create: {
+        sprintId,
+        bilan: bilan ?? null,
+        pointsForts: pointsForts ?? null,
+        pointsFaibles: pointsFaibles ?? null,
+        ameliorations: ameliorations ?? null,
+        animateurId: moi.id,
+        animateurNom: moi.nom,
+      },
+    })
+    return NextResponse.json(retrospective)
   } catch (err) {
     console.error('[PATCH retrospective]', err)
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 })
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }

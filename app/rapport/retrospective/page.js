@@ -1,10 +1,11 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Statut from '@/components/Statut'
+import { peut } from '@/lib/roles'
 
-export default function RetrospectivePage() {
+function RetrospectiveContenu() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const sprintId = searchParams.get('sprintId')
@@ -23,6 +24,8 @@ export default function RetrospectivePage() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  // Le rôle porte le droit d'écriture : sans lui, la page reste en consultation.
+  const [peutEditer, setPeutEditer] = useState(false)
 
   useEffect(() => {
     // Vérifier l'authentification
@@ -33,6 +36,7 @@ export default function RetrospectivePage() {
           const data = await res.json()
           if (data.utilisateur) {
             setIsAuthenticated(true)
+            setPeutEditer(peut(data.utilisateur, 'semaine.cloturer'))
           } else {
             router.push('/connexion')
             return
@@ -84,18 +88,10 @@ export default function RetrospectivePage() {
               pointsFaibles: retroData.retrospective?.pointsFaibles || '',
               ameliorations: retroData.retrospective?.ameliorations || ''
             })
-          } else {
-            // Créer une rétrospective vide
-            const newRetro = await fetch('/api/retrospectives', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ sprintId })
-            })
-            if (newRetro.ok) {
-              const data = await newRetro.json()
-              setRetrospective(data)
-            }
+          } else if (retroRes.status === 403) {
+            setMessage('Cette rétrospective n’est pas dans votre périmètre')
           }
+          // Le GET renvoie déjà une rétrospective vide : rien à créer côté client.
         } catch (err) {
           console.error('Erreur lors de la récupération de la rétrospective', err)
         }
@@ -156,7 +152,7 @@ export default function RetrospectivePage() {
       <section style={{ marginBottom: '30px', padding: '16px', backgroundColor: bgColor, borderRadius: '4px', border: `1px solid ${titleColor}20` }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ color: titleColor, margin: 0 }}>{icon} {title}</h2>
-          {!isEditing && (
+          {!isEditing && peutEditer && (
             <button
               onClick={() => setEditingSection(section)}
               style={{
@@ -357,5 +353,14 @@ export default function RetrospectivePage() {
         </div>
       )}
     </div>
+  )
+}
+
+/** useSearchParams impose une frontière Suspense côté client. */
+export default function RetrospectivePage() {
+  return (
+    <Suspense fallback={<div style={{ padding: '40px' }}>Chargement…</div>}>
+      <RetrospectiveContenu />
+    </Suspense>
   )
 }

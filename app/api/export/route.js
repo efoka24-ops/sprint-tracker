@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 
 /** Export CSV (Excel FR : séparateur ';') du suivi d'une semaine. */
 export async function GET(req) {
-  if (!peut(await utilisateurCourant(), 'export.csv')) return new Response('Non connecté', { status: 401 });
+  const moi = await utilisateurCourant();
+  if (!peut(moi, 'export.csv')) return new Response('Non connecté', { status: 401 });
 
   const semaineId = req.nextUrl.searchParams.get('semaineId');
   if (!semaineId) return new Response('semaineId requis', { status: 400 });
@@ -17,6 +18,10 @@ export async function GET(req) {
     include: { sprint: true, entrees: { include: { developpeur: true }, orderBy: { developpeur: { nom: 'asc' } } } },
   });
   if (!semaine) return new Response('Semaine introuvable', { status: 404 });
+  // Hors vision globale, on n'exporte que les semaines de sa propre squad.
+  if (!peut(moi, 'dashboard.tout') && semaine.sprint.squadId !== (moi.squadId ?? null)) {
+    return new Response('Semaine hors de votre périmètre', { status: 403 });
+  }
 
   const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const lignes = [

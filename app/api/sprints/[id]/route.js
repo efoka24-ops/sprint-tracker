@@ -12,6 +12,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(req, { params }) {
   try {
     const moi = await utilisateurCourant();
+    if (!peut(moi, 'dashboard.voir')) {
+      return NextResponse.json({ error: 'Non connecté' }, { status: 401 });
+    }
     const { id } = await params;
 
     if (!id) {
@@ -27,7 +30,8 @@ export async function GET(req, { params }) {
           include: {
             entrees: {
               include: {
-                developpeur: true
+                // Jamais l'enregistrement complet : il porte le mot de passe haché.
+                developpeur: { select: { id: true, nom: true, email: true, role: true } }
               }
             }
           }
@@ -37,6 +41,9 @@ export async function GET(req, { params }) {
 
     if (!sprint) {
       return NextResponse.json({ error: 'Sprint non trouvé' }, { status: 404 });
+    }
+    if (!peut(moi, 'dashboard.tout') && sprint.squadId !== (moi.squadId ?? null)) {
+      return NextResponse.json({ error: 'Sprint d’une autre squad' }, { status: 403 });
     }
 
     return NextResponse.json(sprint);
