@@ -71,6 +71,7 @@ model Sprint {
   squadId        String?
   semaines       Semaine[]
   retrospective  Retrospective?
+  checklists     ChecklistInstance[]
 
   @@unique([squadId, numero])
 }
@@ -123,6 +124,7 @@ model Entree {
   blocage       String?
   historique    HistoriqueStatut[]
   rallonges     Rallonge[]
+  checklists    ChecklistInstance[]
   updatedAt     DateTime    @updatedAt
   createdAt     DateTime    @default(now())
 
@@ -172,4 +174,59 @@ model Rallonge {
 
   @@index([entreeId])
   @@index([statut])
+}
+
+/**
+ * Item du référentiel de checklist (SDD, cahier de tests, DAB, CAB ACL, CAB Go Live).
+ * Géré par le super admin ; voir lib/checklists.js pour les types et les libellés par défaut.
+ */
+model ChecklistModeleItem {
+  id        String   @id @default(cuid())
+  type      String                       // SDD | TESTS | DAB | CAB_ACL | CAB_GO_LIVE
+  libelle   String
+  ordre     Int      @default(0)
+  actif     Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([type, actif])
+}
+
+/**
+ * Instance de checklist : au niveau du sprint (SDD, TESTS, prérequis avant lancement)
+ * ou au niveau d'une entrée/ticket (DAB, CAB ACL, CAB Go Live, avant chaque instance
+ * de validation). Le Scrum Master (ou Tech Lead) valide une fois tous les items cochés ;
+ * cette validation conditionne le passage au statut d'exécution suivant.
+ */
+model ChecklistInstance {
+  id           String   @id @default(cuid())
+  type         String                       // SDD | TESTS | DAB | CAB_ACL | CAB_GO_LIVE
+  sprint       Sprint?  @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  sprintId     String?
+  entree       Entree?  @relation(fields: [entreeId], references: [id], onDelete: Cascade)
+  entreeId     String?
+  statut       String   @default("EN_COURS") // EN_COURS | VALIDE
+  valideParId  String?
+  valideParNom String?
+  valideLe     DateTime?
+  items        ChecklistItem[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([sprintId])
+  @@index([entreeId])
+}
+
+model ChecklistItem {
+  id          String            @id @default(cuid())
+  instance    ChecklistInstance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  instanceId  String
+  libelle     String                        // copié du référentiel à la création de l'instance
+  ordre       Int               @default(0)
+  fait        Boolean           @default(false)
+  commentaire String?
+  cocheParId  String?
+  cocheParNom String?
+  cocheLe     DateTime?
+
+  @@index([instanceId])
 }

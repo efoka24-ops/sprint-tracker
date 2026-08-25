@@ -9,13 +9,39 @@ const VIDE = {
   capaciteH: '', reelH: '', execution: 'NON_DEMARRE', commentaire: '', blocage: '',
 };
 
-export default function FormulaireSaisie({ semaines, moi }) {
+export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
   const router = useRouter();
   const [semaineId, setSemaineId] = useState(semaines[0]?.id ?? '');
   const [f, setF] = useState(VIDE);
   const [mes, setMes] = useState([]);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importMsg, setImportMsg] = useState(null);
+
+  const importer = async (e) => {
+    const fichier = e.target.files?.[0];
+    e.target.value = '';
+    if (!fichier || !semaineId) return;
+    setImportBusy(true); setImportMsg(null);
+    const form = new FormData();
+    form.append('fichier', fichier);
+    form.append('semaineId', semaineId);
+    const r = await fetch('/api/entrees/import', { method: 'POST', body: form });
+    const d = await r.json();
+    setImportBusy(false);
+    if (!r.ok) return setImportMsg({ t: 'err', m: d.error });
+    const detail = [
+      d.crees ? `${d.crees} créé(s)` : null,
+      d.maj ? `${d.maj} mis à jour` : null,
+      d.ignorees ? `${d.ignorees} ligne(s) vide(s) ignorée(s)` : null,
+    ].filter(Boolean).join(' · ') || 'aucune ligne exploitable';
+    setImportMsg({
+      t: d.erreurs.length ? 'err' : 'ok',
+      m: d.erreurs.length ? `${detail}. Erreurs : ${d.erreurs.join(' ; ')}` : detail,
+    });
+    charger(); router.refresh();
+  };
 
   const charger = async () => {
     if (!semaineId) return setMes([]);
@@ -84,6 +110,31 @@ export default function FormulaireSaisie({ semaines, moi }) {
         <p className="bloc-note" style={{ marginBottom: 20 }}>
           Porteur : <b>{moi.nom}</b> — vos saisies alimentent directement le tableau de bord.
         </p>
+
+        {peutImporter && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+            padding: '12px 14px', marginBottom: 20, borderRadius: 10,
+            border: '1px solid var(--bordure, #e2e4e9)', background: '#f7f8fa',
+          }}>
+            <div style={{ flex: '1 1 240px' }}>
+              <div style={{ fontWeight: 700 }}>Import Excel</div>
+              <div className="bloc-note">
+                Un porteur par ligne : téléchargez le modèle, complétez-le hors ligne, puis importez-le sur la semaine sélectionnée ci-dessous.
+              </div>
+            </div>
+            <a className="btn ghost" href="/api/entrees/template" style={{ padding: '8px 14px' }}>Télécharger le modèle</a>
+            <label className="btn" style={{ padding: '8px 14px', cursor: 'pointer' }}>
+              {importBusy ? 'Import en cours…' : 'Importer un fichier'}
+              <input type="file" accept=".xlsx" hidden disabled={importBusy || !semaineId} onChange={importer} />
+            </label>
+            {importMsg && (
+              <span style={{ color: importMsg.t === 'ok' ? 'var(--vert)' : 'var(--rouge)', fontSize: 14, flexBasis: '100%' }}>
+                {importMsg.m}
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="field">
           <label>Semaine de rattachement</label>

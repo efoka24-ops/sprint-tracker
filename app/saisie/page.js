@@ -89,6 +89,7 @@ export default async function Saisie() {
             <FormulaireSaisie
               semaines={JSON.parse(JSON.stringify(ouvertes))}
               moi={{ id: moi.id, nom: moi.nom }}
+              peutImporter={peut(moi, 'entree.creer.tous')}
             />
 
             <Rallonges peutDecider={false} />

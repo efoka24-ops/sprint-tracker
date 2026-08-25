@@ -6,6 +6,7 @@ import { ROLES, MATRICE } from '@/lib/roles';
 import Calendrier from './Calendrier';
 import BaseDeDonnees from './BaseDeDonnees';
 import Objectifs from './Objectifs';
+import Checklists from './Checklists';
 
 const DANS = (n) => {
   const d = new Date();
@@ -19,6 +20,17 @@ const DEMAIN = () => {
   return d.toISOString().slice(0, 10);
 };
 
+const ONGLETS = [
+  { cle: 'squads', label: 'Squads' },
+  { cle: 'comptes', label: 'Comptes' },
+  { cle: 'sprints', label: 'Sprints' },
+  { cle: 'objectifs', label: 'Objectifs' },
+  { cle: 'calendrier', label: 'Calendrier' },
+  { cle: 'checklists', label: 'Checklists' },
+  { cle: 'droits', label: 'Droits' },
+  { cle: 'donnees', label: 'Base de données' },
+];
+
 export default function ConsoleAdmin({
   moi, rolesAttribuables, comptesInitiaux, sprintsInitiaux, squadsInitiales,
 }) {
@@ -29,6 +41,12 @@ export default function ConsoleAdmin({
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   const [secret, setSecret] = useState(null); // mot de passe provisoire, affiché une seule fois
+  const onglets = ONGLETS.filter((o) => {
+    if (o.cle === 'objectifs' && !moi.peutAffecter) return false;
+    if (o.cle === 'donnees' && !moi.global) return false;
+    return true;
+  });
+  const [onglet, setOnglet] = useState(onglets[0]?.cle ?? 'squads');
 
   const maSquad = squads.find((s) => s.id === moi.squadId);
   const [nouveau, setNouveau] = useState({
@@ -40,11 +58,23 @@ export default function ConsoleAdmin({
   const [sprintSquadId, setSprintSquadId] = useState(moi.squadId ?? '');
 
   const appel = async (url, opts) => {
-    const r = await fetch(url, {
-      headers: opts?.body ? { 'Content-Type': 'application/json' } : undefined, ...opts,
-    });
-    const d = await r.json();
-    if (!r.ok) { setMsg({ t: 'err', m: d.error }); return null; }
+    let r;
+    try {
+      r = await fetch(url, {
+        headers: opts?.body ? { 'Content-Type': 'application/json' } : undefined, ...opts,
+      });
+    } catch {
+      setMsg({ t: 'err', m: 'Connexion au serveur impossible. Réessayez.' });
+      return null;
+    }
+    let d;
+    try {
+      d = await r.json();
+    } catch {
+      setMsg({ t: 'err', m: `Réponse inattendue du serveur (${r.status}).` });
+      return null;
+    }
+    if (!r.ok) { setMsg({ t: 'err', m: d.error ?? `Erreur ${r.status}` }); return null; }
     return d;
   };
 
@@ -97,15 +127,31 @@ export default function ConsoleAdmin({
   };
 
   const supprimerSquad = async (id, nom) => {
-    if (!confirm(`Supprimer la squad « ${nom} » ?\n\nAttention : tous ses sprints et entrées seront supprimés, les membres seront détachés.`)) return;
+    if (!confirm(`Supprimer la squad « ${nom} » ?\n\nSes sprints vides seront supprimés et ses membres détachés. Un sprint qui porte des saisies bloque la suppression (clôturez-le d’abord).`)) return;
     setMsg(null);
-    // Détacher les membres, supprimer les sprints puis la squad
+
+    // On supprime d'abord les sprints vides ; un sprint avec des saisies (409) bloque tout.
     const sprintsSquad = sprints.filter((s) => s.squad?.id === id);
+    const bloquants = [];
     for (const s of sprintsSquad) {
-      // Force delete pour admin
-      await appel(`/api/sprints/${s.id}?force=true`, { method: 'DELETE' });
+      // force=true : le serveur n'accepte la suppression d'un sprint portant des
+      // saisies que pour le super admin ; sinon il répond 409 et le sprint bloque.
+      let r;
+      try {
+        r = await fetch(`/api/sprints/${s.id}?force=true`, { method: 'DELETE' });
+      } catch {
+        return setMsg({ t: 'err', m: 'Connexion au serveur impossible. Réessayez.' });
+      }
+      if (!r.ok) bloquants.push(s.libelle);
     }
-    // Détacher les membres
+    if (bloquants.length) {
+      return setMsg({
+        t: 'err',
+        m: `Squad non supprimée : ${bloquants.join(', ')} porte(nt) des saisies. Clôturez ce(s) sprint(s) (ou supprimez ses saisies) avant de retenter.`,
+      });
+    }
+
+    // Détacher les membres puis supprimer la squad, maintenant vide de sprints.
     const membresSquad = comptes.filter((c) => c.squadId === id);
     for (const c of membresSquad) {
       await appel(`/api/utilisateurs/${c.id}`, { method: 'PATCH', body: JSON.stringify({ squadId: null }) });
@@ -127,6 +173,17 @@ export default function ConsoleAdmin({
     await modifierCompte(compte.id, { nom, email });
   };
 
+  const supprimerCompte = async (compte) => {
+    if (!confirm(`Supprimer définitivement le compte de « ${compte.nom} » ?\n\nImpossible s’il porte des saisies : désactivez-le plutôt dans ce cas.`)) return;
+    setMsg(null); setSecret(null);
+    const r = await fetch(`/api/utilisateurs/${compte.id}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (!r.ok) return setMsg({ t: 'err', m: d.error });
+    setComptes(comptes.filter((c) => c.id !== compte.id));
+    setMsg({ t: 'ok', m: `Compte de « ${compte.nom} » supprimé.` });
+    router.refresh();
+  };
+
   const modifierSprint = async (sprintCible) => {
     const dateDebut = prompt(`Début de ${sprintCible.libelle} (AAAA-MM-JJ)`, sprintCible.dateDebut.slice(0, 10));
     if (dateDebut === null) return;
@@ -138,6 +195,18 @@ export default function ConsoleAdmin({
     if (!d) return;
     setSprints(sprints.map((s) => (s.id === d.id ? d : s)));
     setMsg({ t: 'ok', m: `${d.libelle} : ${d.semaines.length} semaine(s), ${d.capaciteTotale} h de capacité.` });
+    router.refresh();
+  };
+
+  const renumeroterSprint = async (sprintCible) => {
+    const numero = prompt(`Numéro de ${sprintCible.libelle}`, String(sprintCible.numero));
+    if (numero === null || !numero.trim()) return;
+    const d = await appel(`/api/sprints/${sprintCible.id}`, {
+      method: 'PATCH', body: JSON.stringify({ numero: Number(numero) }),
+    });
+    if (!d) return;
+    setSprints(sprints.map((s) => (s.id === sprintCible.id ? { ...s, numero: d.numero, libelle: d.libelle } : s)));
+    setMsg({ t: 'ok', m: `Sprint renuméroté : ${d.libelle}.` });
     router.refresh();
   };
 
@@ -190,8 +259,20 @@ export default function ConsoleAdmin({
 
       {secret && <CarteIdentifiants secret={secret} onFermer={() => setSecret(null)} />}
 
+      {/* ---- Sous-menu de l'administration ---- */}
+      <nav className="row noprint" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+        {onglets.map((o) => (
+          <button key={o.cle} type="button"
+            className={onglet === o.cle ? 'btn' : 'btn ghost'}
+            style={{ padding: '7px 14px' }}
+            onClick={() => setOnglet(o.cle)}>
+            {o.label}
+          </button>
+        ))}
+      </nav>
+
       {/* ---- Squads ---- */}
-      <div className="carte-blanche">
+      {onglet === 'squads' && <div className="carte-blanche">
         <div className="bloc-titre" style={{ marginBottom: 6 }}>
           {moi.global ? 'Squads' : 'Ma squad'}
         </div>
@@ -262,9 +343,10 @@ export default function ConsoleAdmin({
             </table>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* ---- Création d'un accès ---- */}
+      {onglet === 'comptes' && <>
       <form className="carte-blanche" onSubmit={creerCompte}>
         <div className="bloc-titre" style={{ marginBottom: 6 }}>Donner un accès</div>
         <p className="bloc-note" style={{ marginBottom: 18 }}>
@@ -385,6 +467,12 @@ export default function ConsoleAdmin({
                             {c.actif ? 'Désactiver' : 'Réactiver'}
                           </button>
                         )}
+                        {modifiable && (
+                          <button className="btn ghost" style={{ padding: '6px 10px' }}
+                            onClick={() => supprimerCompte(c)}>
+                            Supprimer
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -394,9 +482,10 @@ export default function ConsoleAdmin({
           </table>
         </div>
       </div>
+      </>}
 
       {/* ---- Matrice des droits ---- */}
-      <div className="bloc">
+      {onglet === 'droits' && <div className="bloc">
         <div className="bloc-entete">
           <div className="bloc-titre">Ce que chaque rôle peut faire</div>
           <div className="bloc-note">Les droits découlent du rôle : rien ne s’attribue à la carte.</div>
@@ -423,10 +512,10 @@ export default function ConsoleAdmin({
             </tbody>
           </table>
         </div>
-      </div>
+      </div>}
 
       {/* ---- Affectation des objectifs ---- */}
-      {moi.peutAffecter && (
+      {onglet === 'objectifs' && moi.peutAffecter && (
         <Objectifs
           sprints={sprints}
           membres={comptes.filter((x) => x.actif && x.role !== 'OBSERVATEUR').map((x) => ({ id: x.id, nom: x.nom }))}
@@ -435,12 +524,15 @@ export default function ConsoleAdmin({
       )}
 
       {/* ---- Calendrier : feries et conges ---- */}
-      <Calendrier
-        membres={comptes.filter((c) => c.actif && c.role !== 'OBSERVATEUR').map((c) => ({ id: c.id, nom: c.nom }))}
-        global={moi.global}
-      />
+      {onglet === 'calendrier' && (
+        <Calendrier
+          membres={comptes.filter((c) => c.actif && c.role !== 'OBSERVATEUR').map((c) => ({ id: c.id, nom: c.nom }))}
+          global={moi.global}
+        />
+      )}
 
       {/* ---- Sprints ---- */}
+      {onglet === 'sprints' && <>
       <form className="carte-blanche" onSubmit={creerSprint}>
         <div className="bloc-titre" style={{ marginBottom: 6 }}>Créer un sprint</div>
         <p className="bloc-note" style={{ marginBottom: 18 }}>
@@ -509,6 +601,9 @@ export default function ConsoleAdmin({
                     <td>{s.cloture ? "Clôturé" : "En cours"}</td>
                     <td className="noprint">
                       <div className="row" style={{ gap: 8 }}>
+                        <button className="btn ghost" style={{ padding: "5px 10px" }} onClick={() => renumeroterSprint(s)}>
+                          Numéro
+                        </button>
                         <button className="btn ghost" style={{ padding: "5px 10px" }} onClick={() => modifierSprint(s)}>
                           Période
                         </button>
@@ -527,8 +622,11 @@ export default function ConsoleAdmin({
           </div>
         </div>
       )}
+      </>}
 
-      {moi.global && <BaseDeDonnees />}
+      {onglet === 'checklists' && <Checklists peutGerer={moi.peutGererChecklist} />}
+
+      {onglet === 'donnees' && moi.global && <BaseDeDonnees />}
     </>
   );
 }
