@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { STATUTS } from '@/lib/constants';
 import { TYPES_PROJET } from '@/lib/checklists';
 
 export const dynamic = 'force-dynamic';
 
 /** Résumé (sans détail ni commentaire) des checklists DAB/CAB pour les tickets au stade DAB ou au-delà. */
 async function checklistsParEntree(entrees) {
-  const ids = entrees.filter((e) => (STATUTS[e.execution]?.ordre ?? 0) >= STATUTS.PASSAGE_DAB.ordre).map((e) => e.id);
+  // Toutes les entrées sont interrogées : une checklist ouverte doit apparaître,
+  // que le ticket soit encore en implémentation ou déjà au stade de validation.
+  const ids = entrees.map((e) => e.id);
   if (!ids.length) return new Map();
 
   // Le tableau public ne doit jamais tomber pour un badge secondaire : si les

@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut } from '@/lib/roles';
-import { STATUTS } from '@/lib/constants';
-import { TYPES_SPRINT, TYPES_PROJET } from '@/lib/checklists';
+import { TYPES_SPRINT, TYPES_PROJET, suitDesChecklists } from '@/lib/checklists';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +26,6 @@ export async function GET() {
     },
   });
 
-  const seuilDab = STATUTS.PASSAGE_DAB.ordre;
   const entrees = await prisma.entree.findMany({
     where: {
       semaine: { sprint: perimetreSquad },
@@ -39,7 +37,7 @@ export async function GET() {
     },
     orderBy: { updatedAt: 'desc' },
   });
-  const entreesGatees = entrees.filter((e) => (STATUTS[e.execution]?.ordre ?? 0) >= seuilDab);
+  const entreesGatees = entrees.filter(suitDesChecklists);
 
   return NextResponse.json({
     sprints: sprints.map((s) => ({
