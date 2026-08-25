@@ -32,7 +32,7 @@ const ONGLETS = [
 ];
 
 export default function ConsoleAdmin({
-  moi, rolesAttribuables, comptesInitiaux, sprintsInitiaux, squadsInitiales,
+  moi, rolesAttribuables, rolesVisibles, comptesInitiaux, sprintsInitiaux, squadsInitiales,
 }) {
   const router = useRouter();
   const [comptes, setComptes] = useState(comptesInitiaux);
@@ -487,22 +487,26 @@ export default function ConsoleAdmin({
       {/* ---- Matrice des droits ---- */}
       {onglet === 'droits' && <div className="bloc">
         <div className="bloc-entete">
-          <div className="bloc-titre">Ce que chaque rôle peut faire</div>
-          <div className="bloc-note">Les droits découlent du rôle : rien ne s’attribue à la carte.</div>
+          <div className="bloc-titre">{moi.global ? 'Ce que chaque rôle peut faire' : 'Ce que votre périmètre autorise'}</div>
+          <div className="bloc-note">
+            Les droits découlent du rôle : rien ne s’attribue à la carte.
+            {!moi.global && ' Seuls les rôles que vous administrez sont listés.'}
+          </div>
         </div>
         <div className="scroll">
           <table>
             <thead>
               <tr>
                 <th>Action</th>
-                {Object.entries(ROLES).map(([k, r]) => <th key={k} className="num">{r.label}</th>)}
+                {rolesVisibles.map((k) => <th key={k} className="num">{ROLES[k].label}</th>)}
               </tr>
             </thead>
             <tbody>
-              {MATRICE.map((m) => (
+              {/* Une action qu'aucun rôle visible ne porte n'a pas à être annoncée. */}
+              {MATRICE.filter((m) => rolesVisibles.some((r) => m.roles[r])).map((m) => (
                 <tr key={m.action}>
                   <td style={{ fontWeight: 400 }}>{m.libelle}</td>
-                  {Object.keys(ROLES).map((r) => (
+                  {rolesVisibles.map((r) => (
                     <td key={r} className="num" style={{ color: m.roles[r] ? 'var(--vert)' : '#c9ccd1', fontWeight: 800 }}>
                       {m.roles[r] ? '✓' : '—'}
                     </td>

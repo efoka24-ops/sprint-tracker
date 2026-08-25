@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { utilisateurCourant } from '@/lib/auth';
+import { peut } from '@/lib/roles';
 import { donneesRapport, burndown, fmt } from '@/lib/rapport';
 import Burndown from './Burndown';
 import { semaineCourante } from '@/lib/queries';
@@ -15,6 +16,7 @@ const COULEUR = {
 export default async function Rapport({ searchParams }) {
   const moi = await utilisateurCourant();
   if (!moi) redirect('/connexion');
+  if (!peut(moi, 'export.csv')) redirect('/');
 
   const sp = await searchParams;
   const semaineId = sp?.semaine ?? (await semaineCourante(moi))?.id;

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { utilisateurCourant } from '@/lib/auth';
-import { peut, rolesAttribuables } from '@/lib/roles';
+import { peut, rolesAttribuables, rolesVisibles } from '@/lib/roles';
 import Shell from '@/components/Shell';
 import ConsoleAdmin from './Console';
 
@@ -19,6 +19,8 @@ export default async function AdminPage() {
 
   const global = peut(moi, 'compte.gerer');       // super admin
   const squad = peut(moi, 'compte.gerer.squad');  // super admin ou Scrum Master
+  // Sans le droit, l'écran n'est pas seulement vide : il n'est pas servi.
+  if (!squad) redirect('/');
   const perimetre = global ? {} : { squadId: moi.squadId ?? '—' };
 
   const [comptes, sprints, squads] = squad
@@ -55,25 +57,19 @@ export default async function AdminPage() {
       </header>
 
       <div className="contenu">
-        {!squad ? (
-          <div className="carte-blanche">
-            Cet espace est réservé au super admin et aux Scrum Masters.
-            Demandez une évolution de vos droits si nécessaire.
-          </div>
-        ) : (
-          <ConsoleAdmin
-            moi={{
-              id: moi.id, role: moi.role, squadId: moi.squadId, global, peutAffecter: peut(moi, 'entree.affecter'),
-              peutCocherChecklist: peut(moi, 'checklist.cocher'),
-              peutValiderChecklist: peut(moi, 'checklist.valider'),
-              peutGererChecklist: peut(moi, 'checklist.gerer'),
-            }}
-            rolesAttribuables={rolesAttribuables(moi)}
-            comptesInitiaux={JSON.parse(JSON.stringify(comptes))}
-            sprintsInitiaux={JSON.parse(JSON.stringify(sprints))}
-            squadsInitiales={JSON.parse(JSON.stringify(squads))}
-          />
-        )}
+        <ConsoleAdmin
+          moi={{
+            id: moi.id, role: moi.role, squadId: moi.squadId, global, peutAffecter: peut(moi, 'entree.affecter'),
+            peutCocherChecklist: peut(moi, 'checklist.cocher'),
+            peutValiderChecklist: peut(moi, 'checklist.valider'),
+            peutGererChecklist: peut(moi, 'checklist.gerer'),
+          }}
+          rolesAttribuables={rolesAttribuables(moi)}
+          rolesVisibles={rolesVisibles(moi)}
+          comptesInitiaux={JSON.parse(JSON.stringify(comptes))}
+          sprintsInitiaux={JSON.parse(JSON.stringify(sprints))}
+          squadsInitiales={JSON.parse(JSON.stringify(squads))}
+        />
       </div>
     </Shell>
   );

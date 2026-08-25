@@ -12,6 +12,8 @@ export const dynamic = 'force-dynamic';
 export default async function Saisie() {
   const moi = await utilisateurCourant();
   if (!moi) redirect('/connexion');
+  // Consultation seule : pas d'écran de saisie du tout.
+  if (!peut(moi, 'entree.creer.soi')) redirect('/');
 
   const semaines = await toutesSemaines(moi);
   const ouvertes = semaines.filter((s) => !s.cloturee);
@@ -50,12 +52,7 @@ export default async function Saisie() {
       </header>
 
       <div className="contenu">
-        {!peut(moi, 'entree.creer.soi') ? (
-          <div className="carte-blanche">
-            Votre rôle est en consultation seule : la saisie d’objectifs ne vous est pas ouverte.
-          </div>
-        ) : (
-          <>
+        <>
             {avancement.length > 0 && (
               <div className="carte-blanche">
                 <div className="bloc-titre" style={{ marginBottom: 4 }}>Mon sprint en cours</div>
@@ -93,8 +90,7 @@ export default async function Saisie() {
             />
 
             <Rallonges peutDecider={false} />
-          </>
-        )}
+        </>
       </div>
     </Shell>
   );

@@ -16,7 +16,8 @@ export default async function ReunionPage({ searchParams }) {
 
   const sp = await searchParams;
   const [semaines, semaine] = await Promise.all([toutesSemaines(moi), getSemaine(sp?.semaine, moi)]);
-  const autorise = peut(moi, 'entree.valider');
+  // Sans le droit de valider, l'écran de réunion n'est pas servi du tout.
+  if (!peut(moi, 'entree.valider')) redirect('/');
 
   return (
     <Shell utilisateur={moi} actif="/reunion">
@@ -36,11 +37,7 @@ export default async function ReunionPage({ searchParams }) {
       </header>
 
       <div className="contenu">
-        {!autorise ? (
-          <div className="carte-blanche">
-            La validation des objectifs est réservée au Tech Lead et au super admin.
-          </div>
-        ) : !semaine ? (
+        {!semaine ? (
           <div className="carte-blanche">Aucune semaine disponible.</div>
         ) : (
           <>
@@ -82,7 +79,7 @@ export default async function ReunionPage({ searchParams }) {
             </div>
           </>
         )}
-        {autorise && <Rallonges peutDecider />}
+        <Rallonges peutDecider />
       </div>
     </Shell>
   );
