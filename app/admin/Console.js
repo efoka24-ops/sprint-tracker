@@ -6,6 +6,7 @@ import { ROLES, MATRICE } from '@/lib/roles';
 import Calendrier from './Calendrier';
 import BaseDeDonnees from './BaseDeDonnees';
 import Objectifs from './Objectifs';
+import Checklists from './Checklists';
 
 const DANS = (n) => {
   const d = new Date();
@@ -25,6 +26,7 @@ const ONGLETS = [
   { cle: 'sprints', label: 'Sprints' },
   { cle: 'objectifs', label: 'Objectifs' },
   { cle: 'calendrier', label: 'Calendrier' },
+  { cle: 'checklists', label: 'Checklists' },
   { cle: 'droits', label: 'Droits' },
   { cle: 'donnees', label: 'Base de données' },
 ];
@@ -618,6 +620,8 @@ export default function ConsoleAdmin({
         </div>
       )}
       </>}
+
+      {onglet === 'checklists' && <Checklists peutGerer={moi.peutGererChecklist} />}
 
       {onglet === 'donnees' && moi.global && <BaseDeDonnees />}
     </>

@@ -5,6 +5,7 @@ import { peut } from '@/lib/roles';
 import Shell from '@/components/Shell';
 import SelecteurSemaine from '@/components/SelecteurSemaine';
 import LigneValidation from './validation';
+import PrerequisSprint from './PrerequisSprint';
 import Rallonges from '@/components/Rallonges';
 
 export const dynamic = 'force-dynamic';
@@ -42,33 +43,44 @@ export default async function ReunionPage({ searchParams }) {
         ) : !semaine ? (
           <div className="carte-blanche">Aucune semaine disponible.</div>
         ) : (
-          <div className="bloc">
-            <div className="bloc-entete">
-              <div className="bloc-titre">
-                Sprint #{String(semaine.sprint.numero).padStart(2, '0')} · S{semaine.numero}
+          <>
+            <PrerequisSprint
+              sprintId={semaine.sprint.id}
+              peutCocherChecklist={peut(moi, 'checklist.cocher')}
+              peutValiderChecklist={peut(moi, 'checklist.valider')}
+            />
+            <div className="bloc">
+              <div className="bloc-entete">
+                <div className="bloc-titre">
+                  Sprint #{String(semaine.sprint.numero).padStart(2, '0')} · S{semaine.numero}
+                </div>
+                <div className="bloc-note">
+                  {semaine.cloturee
+                    ? 'Semaine clôturée'
+                    : 'Ajustez le réel et le statut, puis cochez les objectifs atteints.'}
+                </div>
               </div>
-              <div className="bloc-note">
-                {semaine.cloturee
-                  ? 'Semaine clôturée'
-                  : 'Ajustez le réel et le statut, puis cochez les objectifs atteints.'}
+              <div className="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Porteur</th><th>Ticket</th><th>Projet</th>
+                      <th className="num">Cap. h</th><th className="num">Réel h</th><th>Validation</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {semaine.entrees.map((e) => (
+                      <LigneValidation
+                        key={e.id} entree={JSON.parse(JSON.stringify(e))}
+                        peutCocherChecklist={peut(moi, 'checklist.cocher')}
+                        peutValiderChecklist={peut(moi, 'checklist.valider')}
+                      />
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-            <div className="scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Porteur</th><th>Ticket</th><th>Projet</th>
-                    <th className="num">Cap. h</th><th className="num">Réel h</th><th>Validation</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {semaine.entrees.map((e) => (
-                    <LigneValidation key={e.id} entree={JSON.parse(JSON.stringify(e))} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          </>
         )}
         {autorise && <Rallonges peutDecider />}
       </div>

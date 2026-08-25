@@ -135,6 +135,19 @@ function SectionSquad({ squad, semaine }) {
                   </td>
                   <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                     <Badge statut={e.execution} valide={e.valide} />
+                    {e.checklists?.length > 0 && (
+                      <div style={{ marginTop: 4, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {e.checklists.map((c) => (
+                          <span key={c.type} title={`${c.faits}/${c.total} coché(s)`} style={{
+                            fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 20,
+                            background: c.valide ? '#e7f6ed' : '#f0f1f3',
+                            color: c.valide ? '#1f8a4c' : '#8c9099',
+                          }}>
+                            {c.type} {c.valide ? '✓' : '⏳'}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
