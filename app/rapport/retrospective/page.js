@@ -1,10 +1,18 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import Statut from '@/components/Statut'
 
 export default function RetrospectivePage() {
+  return (
+    <Suspense fallback={<div className="p4">Chargement...</div>}>
+      <Retrospective />
+    </Suspense>
+  )
+}
+
+function Retrospective() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const sprintId = searchParams.get('sprintId')
