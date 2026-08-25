@@ -10,10 +10,18 @@ async function checklistsParEntree(entrees) {
   const ids = entrees.filter((e) => (STATUTS[e.execution]?.ordre ?? 0) >= STATUTS.PASSAGE_DAB.ordre).map((e) => e.id);
   if (!ids.length) return new Map();
 
-  const instances = await prisma.checklistInstance.findMany({
-    where: { entreeId: { in: ids }, type: { in: TYPES_PROJET } },
-    include: { items: true },
-  });
+  // Le tableau public ne doit jamais tomber pour un badge secondaire : si les
+  // tables de checklist manquent (schéma non déployé), on rend la vue sans badge.
+  let instances = [];
+  try {
+    instances = await prisma.checklistInstance.findMany({
+      where: { entreeId: { in: ids }, type: { in: TYPES_PROJET } },
+      include: { items: true },
+    });
+  } catch (err) {
+    console.error('[public/suivi] checklists indisponibles', err);
+    return new Map();
+  }
   const parEntree = new Map();
   for (const i of instances) {
     const liste = parEntree.get(i.entreeId) ?? [];
