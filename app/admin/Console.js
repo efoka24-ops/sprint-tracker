@@ -283,6 +283,11 @@ export default function ConsoleAdmin({
               ? 'Créez votre squad pour pouvoir y ajouter vos développeurs et lancer vos sprints.'
               : 'Vous administrez les comptes et les sprints de cette squad.'}
         </p>
+        <p className="bloc-note" style={{ marginBottom: 16 }}>
+          La capacité se calcule sur le Tech Lead et les développeurs — le Scrum Master anime
+          sans porter de charge. Le temps de daily est retiré à chacun d’eux, chaque jour ouvré ;
+          toute modification ici relance le calcul des sprints en cours.
+        </p>
 
         {(moi.global || sansSquad) && (
           <form className="row" onSubmit={creerSquad} style={{ marginBottom: squads.length ? 18 : 0 }}>
@@ -300,6 +305,7 @@ export default function ConsoleAdmin({
               <thead>
                 <tr>
                   <th>Squad</th><th className="num">Heures / jour</th>
+                  <th className="num">Daily (min/jour)</th>
                   <th className="num">Membres</th><th className="num">Sprints</th>
                   <th className="noprint">Actions</th>
                 </tr>
@@ -316,6 +322,17 @@ export default function ConsoleAdmin({
                           if (v && v !== (s.heuresParJour ?? 8)) modifierSquad(s.id, { heuresParJour: v });
                         }}
                         style={{ textAlign: "right" }}
+                      />
+                    </td>
+                    <td className="num" style={{ minWidth: 110 }}>
+                      {/* Retiré chaque jour ouvré au Tech Lead et aux développeurs. */}
+                      <input
+                        type="number" min="0" max="240" step="5" defaultValue={s.minutesDaily ?? 0}
+                        onBlur={(e) => {
+                          const v = Number(e.target.value);
+                          if (Number.isInteger(v) && v !== (s.minutesDaily ?? 0)) modifierSquad(s.id, { minutesDaily: v });
+                        }}
+                        style={{ textAlign: 'right' }}
                       />
                     </td>
                     <td className="num">{s._count?.membres ?? '—'}</td>

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { publierBdEnFond } from '@/lib/depot';
 import { utilisateurCourant } from '@/lib/auth';
-import { peut } from '@/lib/roles';
+import { peut, ROLES_CAPACITE } from '@/lib/roles';
 import { recalculerSquad } from '@/lib/capacite';
 
 export const dynamic = 'force-dynamic';
@@ -38,12 +38,35 @@ export async function PATCH(req, { params }) {
     data.heuresParJour = h;
   }
 
+  if (b.minutesDaily !== undefined) {
+    const m = Number(b.minutesDaily);
+    // Un daily qui mangerait la journée entière n'a pas de sens : on borne à 4 h.
+    if (!Number.isInteger(m) || m < 0 || m > 240) {
+      return NextResponse.json({ error: 'Durée de daily invalide (0 à 240 minutes)' }, { status: 400 });
+    }
+    data.minutesDaily = m;
+  }
+
+  if (b.rolesDaily !== undefined) {
+    const roles = (Array.isArray(b.rolesDaily) ? b.rolesDaily : String(b.rolesDaily).split(','))
+      .map((r) => r.trim()).filter(Boolean);
+    const inconnu = roles.find((r) => !ROLES_CAPACITE.includes(r));
+    if (inconnu) {
+      return NextResponse.json(
+        { error: `« ${inconnu} » ne produit pas de capacité : le daily ne peut pas lui être déduit` },
+        { status: 400 },
+      );
+    }
+    data.rolesDaily = roles.join(',');
+  }
+
   if (!Object.keys(data).length) {
     return NextResponse.json({ error: 'Aucune modification demandée' }, { status: 400 });
   }
 
   const maj = await prisma.squad.update({ where: { id }, data });
-  if (data.heuresParJour !== undefined) await recalculerSquad(id);
+  const toucheLaCapacite = ['heuresParJour', 'minutesDaily', 'rolesDaily'].some((c) => data[c] !== undefined);
+  if (toucheLaCapacite) await recalculerSquad(id);
   publierBdEnFond('modification d’une squad');
   return NextResponse.json(maj);
 }

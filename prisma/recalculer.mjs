@@ -7,6 +7,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import { capaciteSemaine } from '../lib/calendrier.js';
+import { ROLES_CAPACITE } from '../lib/roles.js';
 
 const prisma = new PrismaClient();
 
@@ -22,9 +23,9 @@ async function main() {
       where: {
         actif: true,
         squadId: sprint.squadId ?? undefined,
-        role: { in: ['SCRUM_MASTER', 'TECH_LEAD', 'DEVELOPPEUR'] },
+        role: { in: ROLES_CAPACITE },
       },
-      select: { id: true, nom: true },
+      select: { id: true, nom: true, role: true },
     });
 
     const [feries, conges] = await Promise.all([
@@ -46,7 +47,10 @@ async function main() {
     for (const s of sprint.semaines) {
       const c = capaciteSemaine({
         dateDebut: s.dateDebut, dateFin: s.dateFin,
-        membres, conges, feries, heuresParJour: sprint.squad?.heuresParJour ?? 8,
+        membres, conges, feries,
+        heuresParJour: sprint.squad?.heuresParJour ?? 8,
+        minutesDaily: sprint.squad?.minutesDaily ?? 0,
+        rolesDaily: String(sprint.squad?.rolesDaily ?? '').split(',').map((r) => r.trim()).filter(Boolean),
       });
       total += c.heures;
       await prisma.semaine.update({

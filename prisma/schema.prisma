@@ -11,6 +11,8 @@ model Squad {
   id            String        @id @default(cuid())
   nom           String        @unique
   heuresParJour Float         @default(8)   // base de calcul de la capacite
+  minutesDaily  Int           @default(0)   // temps de daily retire par jour ouvre, en minutes
+  rolesDaily    String        @default("TECH_LEAD,DEVELOPPEUR") // roles auxquels le daily est deduit
   membres       Developpeur[]
   sprints       Sprint[]
   feries        JourFerie[]
