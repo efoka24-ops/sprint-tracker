@@ -4,6 +4,7 @@ import { publierBdEnFond } from '@/lib/depot';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut, peutSurEntree } from '@/lib/roles';
 import { STATUTS } from '@/lib/constants';
+import { checklistManquantePour, libelleType } from '@/lib/checklists';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,19 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Vous ne pouvez saisir que vos propres objectifs' }, { status: 403 });
   }
 
+  const existante = b.id ? await prisma.entree.findUnique({ where: { id: b.id } }) : null;
+  if (b.id && !existante) return NextResponse.json({ error: 'Objectif introuvable' }, { status: 404 });
+
+  const execution = b.execution || 'NON_DEMARRE';
+  if (execution !== (existante?.execution ?? 'NON_DEMARRE')) {
+    const manquant = await checklistManquantePour(prisma, execution, { sprintId: semaine.sprintId, entreeId: existante?.id ?? null });
+    if (manquant) {
+      return NextResponse.json({
+        error: `Checklist « ${libelleType(manquant)} » non validée : impossible de passer à ce statut avant sa validation par le Scrum Master.`,
+      }, { status: 409 });
+    }
+  }
+
   const data = {
     ticket: String(b.ticket).trim(),
     idPerfit: b.idPerfit ? String(b.idPerfit).trim() : null,
@@ -73,8 +87,6 @@ export async function POST(req) {
   publierBdEnFond(b.id ? 'mise à jour d’un objectif' : 'saisie d’un objectif');
 
   if (b.id) {
-    const existante = await prisma.entree.findUnique({ where: { id: b.id } });
-    if (!existante) return NextResponse.json({ error: 'Objectif introuvable' }, { status: 404 });
     if (!peutSurEntree(moi, 'modifier', existante)) {
       return NextResponse.json({ error: 'Objectif porté par un autre développeur' }, { status: 403 });
     }

@@ -4,6 +4,7 @@ import { publierBdEnFond } from '@/lib/depot';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut, peutSurEntree } from '@/lib/roles';
 import { STATUTS } from '@/lib/constants';
+import { checklistManquantePour, libelleType } from '@/lib/checklists';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,16 @@ export async function PATCH(req, { params }) {
 
   if ('execution' in b && !STATUTS[b.execution]) {
     return NextResponse.json({ error: 'Statut inconnu' }, { status: 400 });
+  }
+
+  if ('execution' in b && b.execution !== entree.execution) {
+    const semaine = await prisma.semaine.findUnique({ where: { id: entree.semaineId } });
+    const manquant = await checklistManquantePour(prisma, b.execution, { sprintId: semaine.sprintId, entreeId: entree.id });
+    if (manquant) {
+      return NextResponse.json({
+        error: `Checklist « ${libelleType(manquant)} » non validée : impossible de passer à ce statut avant sa validation par le Scrum Master.`,
+      }, { status: 409 });
+    }
   }
 
   // Reaffectation ponctuelle : changer de porteur ou de semaine depuis le tableau.

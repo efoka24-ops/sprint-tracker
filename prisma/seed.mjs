@@ -11,8 +11,21 @@
  */
 import { PrismaClient } from '@prisma/client';
 import crypto from 'node:crypto';
+import { ITEMS_PAR_DEFAUT } from '../lib/checklists.js';
 
 const prisma = new PrismaClient();
+
+/** Amorce le référentiel de checklist une seule fois par type (n'écrase pas les modifications du super admin). */
+async function seedReferentielChecklist() {
+  for (const [type, libelles] of Object.entries(ITEMS_PAR_DEFAUT)) {
+    const existant = await prisma.checklistModeleItem.findFirst({ where: { type } });
+    if (existant) continue;
+    await prisma.checklistModeleItem.createMany({
+      data: libelles.map((libelle, ordre) => ({ type, libelle, ordre })),
+    });
+    console.log(`  référentiel checklist « ${type} » : ${libelles.length} item(s)`);
+  }
+}
 
 function hacher(clair) {
   const sel = crypto.randomBytes(16).toString('hex');
@@ -81,6 +94,8 @@ async function main() {
   );
   console.log(`Scrum Master : ${scrumMaster.email}`);
   if (imposeScrum) console.log(`Mot de passe provisoire (à changer à la 1re connexion) : ${mdpScrum}`);
+
+  await seedReferentielChecklist();
 
   if (!demo) return console.log('Seed terminé (comptes uniquement). Ajoutez --demo pour le sprint de démonstration.');
 
