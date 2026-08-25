@@ -1,12 +1,13 @@
 /**
- * Amorçage : crée le compte super admin puis, en option, le sprint de démarrage
+ * Amorçage : crée le compte super admin et le compte Scrum Master (deux comptes
+ * distincts, deux niveaux de droits), puis en option le sprint de démarrage
  * repris du template « Suivi des objectifs par développeur ».
  *
- *   node --env-file=.env.local prisma/seed.mjs            → super admin seul
+ *   node --env-file=.env.local prisma/seed.mjs            → super admin + Scrum Master
  *   node --env-file=.env.local prisma/seed.mjs --demo     → + équipe et sprint #01
  *
- * Le mot de passe du super admin vient de SUPER_ADMIN_PASSWORD ; à défaut un mot de
- * passe provisoire est généré et affiché une seule fois.
+ * Les mots de passe viennent de SUPER_ADMIN_PASSWORD / SCRUM_MASTER_PASSWORD ; à
+ * défaut un mot de passe provisoire est généré et affiché une seule fois.
  */
 import { PrismaClient } from '@prisma/client';
 import crypto from 'node:crypto';
@@ -61,13 +62,25 @@ async function main() {
   });
   const demo = process.argv.includes('--demo');
 
-  const email = (process.env.SUPER_ADMIN_EMAIL || 'emm.foka@gmail.com').toLowerCase();
+  const email = (process.env.SUPER_ADMIN_EMAIL || 'superadmin@orange.com').toLowerCase();
   const mdp = process.env.SUPER_ADMIN_PASSWORD || provisoire();
   const impose = !process.env.SUPER_ADMIN_PASSWORD;
 
-  const admin = await compte(process.env.SUPER_ADMIN_NOM || 'Emmanuel FOKA', email, 'SUPER_ADMIN', mdp, impose, squad.id);
+  const admin = await compte(process.env.SUPER_ADMIN_NOM || 'Super Admin', email, 'SUPER_ADMIN', mdp, impose, squad.id);
   console.log(`Super admin : ${admin.email}`);
   if (impose) console.log(`Mot de passe provisoire (à changer à la 1re connexion) : ${mdp}`);
+
+  // Scrum Master distinct du super admin : pilote la squad au quotidien.
+  const emailScrum = (process.env.SCRUM_MASTER_EMAIL || 'emmanuel.foka@orange.com').toLowerCase();
+  const mdpScrum = process.env.SCRUM_MASTER_PASSWORD || provisoire();
+  const imposeScrum = !process.env.SCRUM_MASTER_PASSWORD;
+
+  const scrumMaster = await compte(
+    process.env.SCRUM_MASTER_NOM || 'FOKA Emmanuel Ext O-CM/DT',
+    emailScrum, 'SCRUM_MASTER', mdpScrum, imposeScrum, squad.id,
+  );
+  console.log(`Scrum Master : ${scrumMaster.email}`);
+  if (imposeScrum) console.log(`Mot de passe provisoire (à changer à la 1re connexion) : ${mdpScrum}`);
 
   if (!demo) return console.log('Seed terminé (comptes uniquement). Ajoutez --demo pour le sprint de démonstration.');
 
