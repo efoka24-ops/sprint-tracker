@@ -11,3 +11,6 @@ prisma/dev.db*
 
 # Dossier de travail imbrique : ce n est pas un sous-module.
 sprint-tracker/
+
+# Fichiers de verrouillage Office
+~$*
