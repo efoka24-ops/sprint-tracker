@@ -66,7 +66,7 @@ export async function GET(req) {
 
   const lignes = semaine.entrees.map((e) => [
     { text: e.developpeur.nom, options: { bold: true } },
-    { text: `${e.ticket} · ${e.projet}${e.idPerfit ? `\nPerfit ${e.idPerfit}` : ''}` },
+    { text: `${e.ticket} · ${e.projet}` },
     { text: e.objectif },
     { text: e.capaciteH ? `${e.capaciteH} h` : '—', options: { align: 'center' } },
     { text: e.reelH != null ? `${e.reelH} h` : '—', options: { align: 'center' } },

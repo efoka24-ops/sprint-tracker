@@ -70,7 +70,7 @@ export default async function Rapport({ searchParams }) {
       <table className="rapport-table">
         <thead>
           <tr>
-            <th>Porteur</th><th>Sujet / ticket</th><th>Objectif de la semaine</th>
+            <th>Porteur</th><th>Sujet / ticket Perfit</th><th>Objectif de la semaine</th>
             <th>Cap.</th><th>Réel</th><th>Exécution</th><th>Validé</th>
           </tr>
         </thead>
@@ -78,7 +78,7 @@ export default async function Rapport({ searchParams }) {
           {semaine.entrees.map((e) => (
             <tr key={e.id}>
               <td><b>{e.developpeur.nom}</b></td>
-              <td>{e.ticket} · {e.projet}{e.idPerfit && <div className="bloc-note">Perfit {e.idPerfit}</div>}</td>
+              <td>{e.ticket} · {e.projet}</td>
               <td>{e.objectif}</td>
               <td className="num">{e.capaciteH ? `${e.capaciteH} h` : '—'}</td>
               <td className="num">{e.reelH != null ? `${e.reelH} h` : '—'}</td>

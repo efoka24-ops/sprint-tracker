@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { STATUTS_PROJET } from '@/lib/projets';
 
-const VIDE = { ticket: '', idPerfit: '', libelle: '', heuresFaisabilite: '', storyPoints: '', porteurs: [] };
+const VIDE = { ticket: '', libelle: '', heuresFaisabilite: '', storyPoints: '', porteurs: [] };
 
 /**
  * Portefeuille de projets : l'enveloppe estimée en faisabilité est saisie une
@@ -103,14 +103,9 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
         <form onSubmit={creer}>
           <div className="row">
             <div className="field" style={{ flex: 1 }}>
-              <label>Ticket</label>
+              <label>Ticket Perfit</label>
               <input value={nouveau.ticket} required placeholder="#9322"
                 onChange={(e) => setNouveau({ ...nouveau, ticket: e.target.value })} />
-            </div>
-            <div className="field" style={{ flex: 1 }}>
-              <label>ID Perfit</label>
-              <input value={nouveau.idPerfit} placeholder="facultatif"
-                onChange={(e) => setNouveau({ ...nouveau, idPerfit: e.target.value })} />
             </div>
             <div className="field" style={{ flex: 2 }}>
               <label>Libellé</label>
@@ -143,7 +138,7 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
           <table>
             <thead>
               <tr>
-                <th>Ticket</th><th>Projet</th><th>Porteurs</th>
+                <th>Ticket Perfit</th><th>Projet</th><th>Porteurs</th>
                 <th className="num">Enveloppe</th><th className="num">SP</th>
                 <th className="num">Planifié</th><th className="num">Consommé</th>
                 <th>Statut</th><th className="noprint">Actions</th>
@@ -157,7 +152,6 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
                   <tr key={p.id} style={st.engage === false ? { opacity: 0.6 } : undefined}>
                     <td>
                       {p.ticket}
-                      {p.idPerfit && <div className="bloc-note">Perfit {p.idPerfit}</div>}
                     </td>
                     <td>{p.libelle}</td>
                     <td style={{ minWidth: 220 }}>

@@ -277,7 +277,6 @@ export default function TableauBord({ semaine, semaines, droits, moiId, progress
                       <div style={{ paddingRight: 14 }}>
                         <div className="sujet-titre">
                           {e.ticket} · {e.projet}
-                          {e.idPerfit && <span style={{ color: '#8c9099', fontWeight: 400 }}> · Perfit {e.idPerfit}</span>}
                         </div>
                         <div className="sujet-objectif">{e.objectif}</div>
                         {e.updatedAt && (

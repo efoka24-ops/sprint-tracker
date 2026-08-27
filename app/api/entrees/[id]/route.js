@@ -65,7 +65,7 @@ export async function PATCH(req, { params }) {
     }
   }
 
-  const champsPorteur = ['execution', 'reelH', 'commentaire', 'blocage', 'ticket', 'idPerfit', 'projet', 'objectif', 'capaciteH'].filter((k) => k in b);
+  const champsPorteur = ['execution', 'reelH', 'commentaire', 'blocage', 'ticket', 'projet', 'objectif', 'capaciteH'].filter((k) => k in b);
   if (champsPorteur.length) {
     if (!peutSurEntree(moi, 'modifier', entree)) {
       return NextResponse.json({ error: 'Objectif porté par un autre développeur' }, { status: 403 });

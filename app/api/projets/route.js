@@ -76,7 +76,6 @@ export async function POST(req) {
   const projet = await prisma.projet.create({
     data: {
       ticket, libelle, squadId,
-      idPerfit: String(b.idPerfit ?? '').trim() || null,
       heuresFaisabilite: Number(b.heuresFaisabilite) || 0,
       storyPoints: Number(b.storyPoints) || 0,
       statut: b.statut && STATUTS_PROJET[b.statut] ? b.statut : 'ACTIF',

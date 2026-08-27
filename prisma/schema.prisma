@@ -70,8 +70,7 @@ model Developpeur {
  */
 model Projet {
   id                String   @id @default(cuid())
-  ticket            String                        // "#9322"
-  idPerfit          String?                       // reference Perfit du projet
+  ticket            String                        // ticket Perfit, ex "#9322"
   libelle           String                        // "CXRecov"
   heuresFaisabilite Float    @default(0)          // enveloppe estimee en faisabilite
   storyPoints       Int      @default(0)
@@ -154,9 +153,8 @@ model Entree {
   semaineId     String
   developpeur   Developpeur @relation(fields: [developpeurId], references: [id], onDelete: Cascade)
   developpeurId String
-  ticket        String                       // "#9673"
-  idPerfit      String?                      // identifiant Perfit (référentiel Orange)
-  projet        String                       // "HLR Manager" (libelle libre, repris du Projet quand il est rattache)
+  ticket        String                       // ticket Perfit, ex "#9673"
+  projet        String                     // "HLR Manager" (libelle libre, repris du Projet quand il est rattache)
   projetRef     Projet?     @relation(fields: [projetId], references: [id])
   projetId      String?
   objectif      String                       // objectif de la semaine

@@ -70,13 +70,12 @@ export async function POST(req) {
 
     const porteurNom = texteCelllue(ligne.getCell(1));
     const ticket = texteCelllue(ligne.getCell(2));
-    const idPerfit = texteCelllue(ligne.getCell(3));
-    const projet = texteCelllue(ligne.getCell(4));
-    const objectif = texteCelllue(ligne.getCell(5));
-    const capaciteBrut = texteCelllue(ligne.getCell(6));
-    const reelBrut = texteCelllue(ligne.getCell(7));
-    const executionLibelle = texteCelllue(ligne.getCell(8));
-    const commentaire = texteCelllue(ligne.getCell(9));
+    const projet = texteCelllue(ligne.getCell(3));
+    const objectif = texteCelllue(ligne.getCell(4));
+    const capaciteBrut = texteCelllue(ligne.getCell(5));
+    const reelBrut = texteCelllue(ligne.getCell(6));
+    const executionLibelle = texteCelllue(ligne.getCell(7));
+    const commentaire = texteCelllue(ligne.getCell(8));
 
     if (!porteurNom && !ticket && !projet && !objectif) { resultats.ignorees++; continue; }
 
@@ -99,7 +98,6 @@ export async function POST(req) {
 
     const data = {
       ticket,
-      idPerfit: idPerfit || null,
       projet,
       objectif,
       capaciteH: Number(String(capaciteBrut).replace(',', '.')) || 0,

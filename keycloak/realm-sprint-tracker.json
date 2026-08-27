@@ -1,0 +1,129 @@
+{
+  "realm": "sprint-tracker",
+  "enabled": true,
+  "displayName": "Sprint Tracker",
+  "loginTheme": "keycloak",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "accessTokenLifespan": 1800,
+  "ssoSessionIdleTimeout": 43200,
+  "ssoSessionMaxLifespan": 43200,
+  "roles": {
+    "realm": [
+      {
+        "name": "SUPER_ADMIN",
+        "description": "Administre la plateforme : squads, Scrum Masters et tous les comptes."
+      },
+      {
+        "name": "SCRUM_MASTER",
+        "description": "Constitue sa squad, cree ses sprints, valide les objectifs du vendredi."
+      },
+      {
+        "name": "TECH_LEAD",
+        "description": "Anime la revue technique : valide les objectifs et cloture la semaine."
+      },
+      {
+        "name": "DEVELOPPEUR",
+        "description": "Saisit et met a jour ses propres objectifs sur les semaines ouvertes."
+      },
+      {
+        "name": "OBSERVATEUR",
+        "description": "Consultation du tableau de bord et export uniquement."
+      }
+    ]
+  },
+  "defaultRoles": ["DEVELOPPEUR"],
+  "clients": [
+    {
+      "clientId": "sprint-tracker",
+      "name": "Sprint Tracker",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "secret": "changez-ce-secret-en-production",
+      "redirectUris": [
+        "http://localhost:3000/api/auth/callback/keycloak",
+        "https://sprint-tracker-taupe.vercel.app/api/auth/callback/keycloak"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "https://sprint-tracker-taupe.vercel.app"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:3000/connexion##https://sprint-tracker-taupe.vercel.app/connexion"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "protocolMappers": [
+        {
+          "name": "roles-metier",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "squad",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "squad",
+            "claim.name": "squad",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "sudoadmin",
+      "email": "sudoadmin@orange.com",
+      "firstName": "Sudo",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "changez-moi",
+          "temporary": true
+        }
+      ],
+      "realmRoles": ["SUPER_ADMIN"]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "roles",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    }
+  ]
+}

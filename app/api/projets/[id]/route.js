@@ -50,7 +50,6 @@ export async function PATCH(req, { params }) {
     }
     data.ticket = ticket;
   }
-  if (b.idPerfit !== undefined) data.idPerfit = String(b.idPerfit).trim() || null;
   if (b.heuresFaisabilite !== undefined) data.heuresFaisabilite = Number(b.heuresFaisabilite);
   if (b.storyPoints !== undefined) data.storyPoints = Number(b.storyPoints);
   if (b.statut !== undefined) data.statut = b.statut;

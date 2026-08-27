@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { STATUTS, ORDRE_STATUTS } from '@/lib/constants';
 
 const VIDE = {
-  id: null, developpeurId: '', ticket: '', idPerfit: '', projet: '', objectif: '',
   capaciteH: '', reelH: '', execution: 'NON_DEMARRE', commentaire: '',
 };
 
@@ -74,7 +73,6 @@ export default function Objectifs({ sprints, membres, moiId }) {
   };
 
   const editer = (l) => setF({
-    id: l.id, developpeurId: l.developpeur.id, ticket: l.ticket, idPerfit: l.idPerfit ?? '',
     projet: l.projet, objectif: l.objectif, capaciteH: l.capaciteH, reelH: l.reelH ?? '',
     execution: l.execution, commentaire: l.commentaire ?? '',
   });
@@ -132,12 +130,8 @@ export default function Objectifs({ sprints, membres, moiId }) {
 
         <div className="row">
           <div style={{ flex: 1 }} className="field">
-            <label>Ticket</label>
+            <label>Ticket Perfit</label>
             <input placeholder="#9673" value={f.ticket} onChange={set('ticket')} required />
-          </div>
-          <div style={{ flex: 1 }} className="field">
-            <label>ID Perfit</label>
-            <input placeholder="PERF-12345" value={f.idPerfit} onChange={set('idPerfit')} />
           </div>
           <div style={{ flex: 2 }} className="field">
             <label>Projet</label>

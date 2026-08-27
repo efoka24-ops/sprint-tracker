@@ -25,9 +25,9 @@ export async function GET(req) {
 
   const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const lignes = [
-    ['Porteur', 'Rôle', 'Ticket', 'ID Perfit', 'Projet', 'Objectif de la semaine', 'Cap. (h)', 'Réel (h)', 'Exécution', 'Validé', 'Commentaire', 'Blocage'].map(esc).join(';'),
+    ['Porteur', 'Rôle', 'Ticket Perfit', 'Projet', 'Objectif de la semaine', 'Cap. (h)', 'Réel (h)', 'Exécution', 'Validé', 'Commentaire', 'Blocage'].map(esc).join(';'),
     ...semaine.entrees.map((e) => [
-      e.developpeur.nom, e.developpeur.role, e.ticket, e.idPerfit ?? '', e.projet, e.objectif,
+      e.developpeur.nom, e.developpeur.role, e.ticket, e.projet, e.objectif,
       e.capaciteH, e.reelH ?? '', STATUTS[e.execution]?.label ?? e.execution,
       e.valide ? 'OUI' : 'NON', e.commentaire ?? '', e.blocage ?? '',
     ].map(esc).join(';')),

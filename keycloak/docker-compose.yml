@@ -1,0 +1,32 @@
+# Keycloak de développement pour Sprint Tracker.
+#
+#   docker compose -f keycloak/docker-compose.yml up -d
+#   console : http://localhost:8080  (admin / admin)
+#   realm   : sprint-tracker, importé au démarrage depuis realm-sprint-tracker.json
+#
+# Ce fichier est un environnement de DÉVELOPPEMENT : mot de passe admin en clair,
+# base embarquée, HTTP sans TLS. Il ne se déploie pas tel quel.
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: sprint-tracker-keycloak
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+      # Le realm importé porte déjà les cinq rôles métier de l'application.
+      KC_DB: dev-file
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./realm-sprint-tracker.json:/opt/keycloak/data/import/realm-sprint-tracker.json:ro
+      - keycloak-data:/opt/keycloak/data
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '\"status\": \"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  keycloak-data:

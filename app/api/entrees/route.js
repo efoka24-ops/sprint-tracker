@@ -5,6 +5,7 @@ import { utilisateurCourant } from '@/lib/auth';
 import { peut, peutSurEntree } from '@/lib/roles';
 import { STATUTS } from '@/lib/constants';
 import { checklistManquantePour, libelleType } from '@/lib/checklists';
+import { capaciteHebdomadaire, depassementSemaine } from '@/lib/planification';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,9 +73,12 @@ export async function POST(req) {
     }
   }
 
+  const heures = Number(b.capaciteH) || 0;
+  const debordement = await verifierSemaine({ heures, porteurId, semaine, entreeId: b.id });
+  if (debordement) return NextResponse.json({ error: debordement }, { status: 409 });
+
   const data = {
     ticket: String(b.ticket).trim(),
-    idPerfit: b.idPerfit ? String(b.idPerfit).trim() : null,
     projet: String(b.projet).trim(),
     objectif: String(b.objectif).trim(),
     capaciteH: Number(b.capaciteH) || 0,
@@ -134,4 +138,41 @@ async function verifierPerimetre(moi, porteurId, semaine) {
     );
   }
   return null;
+}
+
+/**
+ * Borne de cohérence : la somme des heures planifiées d'un porteur sur une
+ * semaine ne peut pas dépasser ce que cette semaine contient pour lui. On refuse
+ * l'impossible (l'enveloppe d'un projet recopiée sur une semaine), pas le tendu.
+ */
+async function verifierSemaine({ heures, porteurId, semaine, entreeId }) {
+  if (!(heures > 0)) return null;
+
+  const [porteur, squad, conges, feries] = await Promise.all([
+    prisma.developpeur.findUnique({ where: { id: porteurId }, select: { id: true, nom: true, role: true } }),
+    semaine.sprint.squadId ? prisma.squad.findUnique({ where: { id: semaine.sprint.squadId } }) : null,
+    prisma.conge.findMany({
+      where: { developpeurId: porteurId, dateDebut: { lte: semaine.dateFin }, dateFin: { gte: semaine.dateDebut } },
+    }),
+    prisma.jourFerie.findMany({
+      where: {
+        date: { gte: semaine.dateDebut, lte: semaine.dateFin },
+        OR: [{ squadId: null }, { squadId: semaine.sprint.squadId ?? undefined }],
+      },
+    }),
+  ]);
+  if (!porteur) return null;
+
+  const capacite = capaciteHebdomadaire({ semaine, squad, developpeur: porteur, conges, feries });
+
+  // Les autres objectifs déjà posés par ce porteur sur la semaine comptent aussi.
+  const autres = await prisma.entree.aggregate({
+    where: { semaineId: semaine.id, developpeurId: porteurId, ...(entreeId ? { id: { not: entreeId } } : {}) },
+    _sum: { capaciteH: true },
+  });
+
+  return depassementSemaine({
+    heuresDemandees: heures + (autres._sum.capaciteH ?? 0),
+    capacite, porteur: porteur.nom, semaine,
+  });
 }

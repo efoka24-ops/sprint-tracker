@@ -102,7 +102,7 @@ async function main() {
       ['Blocage', 30], ['Commentaire', 30], ['Mis à jour le', 18]],
     entrees.map((e) => [
       e.semaine.sprint.squad?.nom ?? '—', e.semaine.sprint.libelle, `S${e.semaine.numero}`,
-      e.developpeur.nom, e.ticket, e.idPerfit ?? '', e.projet, e.objectif,
+      e.developpeur.nom, e.ticket, e.projet, e.objectif,
       e.capaciteH, e.reelH ?? '', STATUTS[e.execution] ?? e.execution, e.valide ? 'oui' : 'non',
       e.blocage ?? '', e.commentaire ?? '', horodatage(e.updatedAt),
     ]));

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { STATUTS, ORDRE_STATUTS, estTermine } from '@/lib/constants';
 
 const VIDE = {
-  id: null, ticket: '', idPerfit: '', projet: '', objectif: '',
   capaciteH: '', reelH: '', execution: 'NON_DEMARRE', commentaire: '', blocage: '',
 };
 
@@ -150,12 +149,8 @@ export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
 
         <div className="row">
           <div style={{ flex: 1 }} className="field">
-            <label>ID / ticket</label>
+            <label>Ticket Perfit</label>
             <input placeholder="#9673" value={f.ticket} onChange={set('ticket')} required />
-          </div>
-          <div style={{ flex: 1 }} className="field">
-            <label>ID Perfit</label>
-            <input placeholder="PERF-12345" value={f.idPerfit} onChange={set('idPerfit')} />
           </div>
           <div style={{ flex: 2 }} className="field">
             <label>Projet / sujet</label>
@@ -221,7 +216,6 @@ export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
             <div className="row" style={{ marginTop: 8 }}>
               <button className="btn ghost" style={{ padding: '6px 12px' }}
                 onClick={() => setF({
-                  id: e.id, ticket: e.ticket, idPerfit: e.idPerfit ?? '', projet: e.projet, objectif: e.objectif,
                   capaciteH: e.capaciteH, reelH: e.reelH ?? '', execution: e.execution,
                   commentaire: e.commentaire ?? '', blocage: e.blocage ?? '',
                 })}>Modifier</button>
