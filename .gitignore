@@ -8,3 +8,6 @@ prisma/dev.db*
 
 .vercel
 .env*
+
+# Dossier de travail imbrique : ce n est pas un sous-module.
+sprint-tracker/
