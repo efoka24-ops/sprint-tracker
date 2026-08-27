@@ -23,7 +23,7 @@ const VIDE = { titre: '', projetId: '', porteurId: '', priorite: 'MOYENNE', heur
  * Backlog produit : une user story par ligne, avec les story points déduits du
  * barème. L'estimation est la seule saisie — les points suivent.
  */
-export default function Backlog({ membres = [] }) {
+export default function Backlog({ membres = [], lectureSeule = false }) {
   const [stories, setStories] = useState(null);
   const [projets, setProjets] = useState([]);
   const [tableau, setTableau] = useState(null);
@@ -104,6 +104,9 @@ export default function Backlog({ membres = [] }) {
   };
 
   if (!stories) return <div className="bloc-note">Chargement…</div>;
+  // En lecture seule, aucune commande d'écriture n'est présentée : le serveur
+  // refuserait de toute façon, autant ne pas proposer ce qui sera refusé.
+  const fige = lectureSeule || busy;
 
   const pret = stories.filter((s) => s.etatBacklog === 'PRET').length;
   const haute = stories.filter((s) => s.priorite === 'HAUTE').length;
@@ -169,7 +172,7 @@ export default function Backlog({ membres = [] }) {
       </div>
 
       {/* ---- Import du modèle Excel ---- */}
-      <div className="carte-blanche" style={{ marginBottom: 18 }}>
+      {!lectureSeule && <div className="carte-blanche" style={{ marginBottom: 18 }}>
         <div className="bloc-titre" style={{ marginBottom: 4 }}>Importer un backlog</div>
         <p className="bloc-note" style={{ marginBottom: 12 }}>
           Téléchargez le modèle, remplissez-le hors ligne, réimportez-le. Le classeur rappelle le barème ;
@@ -177,7 +180,7 @@ export default function Backlog({ membres = [] }) {
         </p>
         <div className="row" style={{ alignItems: 'center', gap: 12 }}>
           <a className="btn ghost" href="/api/user-stories/template">Télécharger le modèle</a>
-          <input type="file" accept=".xlsx" disabled={busy}
+          <input type="file" accept=".xlsx" disabled={fige}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) { importer(f); e.target.value = ''; } }} />
         </div>
         {refus.length > 0 && (
@@ -188,10 +191,10 @@ export default function Backlog({ membres = [] }) {
             </ul>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* ---- Ajout d'une user story ---- */}
-      <div className="carte-blanche" style={{ marginBottom: 18 }}>
+      {!lectureSeule && <div className="carte-blanche" style={{ marginBottom: 18 }}>
         <div className="bloc-titre" style={{ marginBottom: 4 }}>Ajouter une user story</div>
         <p className="bloc-note" style={{ marginBottom: 12 }}>
           Seule l’estimation en heures se saisit : les story points en découlent par le barème.
@@ -231,7 +234,7 @@ export default function Backlog({ membres = [] }) {
               <input type="number" min="0" step="0.5" value={nouveau.heuresEstimees}
                 onChange={(e) => setNouveau({ ...nouveau, heuresEstimees: e.target.value })} />
             </div>
-            <div className="field"><button className="btn" disabled={busy}>Ajouter</button></div>
+            <div className="field"><button className="btn" disabled={fige}>Ajouter</button></div>
           </div>
         </form>
         {p && (
@@ -240,7 +243,7 @@ export default function Backlog({ membres = [] }) {
             {estEpique(nouveau.heuresEstimees) && ' — au-delà de 32 h, découpez la story'}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* ---- Backlog produit ---- */}
       <div className="bloc">
@@ -270,14 +273,14 @@ export default function Backlog({ membres = [] }) {
                       <div className="bloc-note">{us.projet?.libelle}</div>
                     </td>
                     <td style={{ minWidth: 150 }}>
-                      <select value={us.porteurId ?? ''} disabled={busy}
+                      <select value={us.porteurId ?? ''} disabled={fige}
                         onChange={(e) => modifier(us.id, { porteurId: e.target.value || null })}>
                         <option value="">— Non assigné —</option>
                         {membres.map((m) => <option key={m.id} value={m.id}>{m.nom}</option>)}
                       </select>
                     </td>
                     <td style={{ minWidth: 110 }}>
-                      <select value={us.priorite} disabled={busy}
+                      <select value={us.priorite} disabled={fige}
                         onChange={(e) => modifier(us.id, { priorite: e.target.value })}
                         style={{ color: prio.color, fontWeight: 700 }}>
                         {Object.entries(PRIOS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
@@ -285,7 +288,7 @@ export default function Backlog({ membres = [] }) {
                     </td>
                     <td className="num" style={{ minWidth: 90 }}>
                       <input type="number" min="0" step="0.5" defaultValue={us.heuresEstimees}
-                        style={{ textAlign: 'right' }} disabled={busy}
+                        style={{ textAlign: 'right' }} disabled={fige}
                         onBlur={(e) => {
                           const v = Number(e.target.value);
                           if (v !== us.heuresEstimees) modifier(us.id, { heuresEstimees: v });
@@ -295,13 +298,13 @@ export default function Backlog({ membres = [] }) {
                       {us.storyPoints} SP
                     </td>
                     <td style={{ minWidth: 120 }}>
-                      <select value={us.statut} disabled={busy}
+                      <select value={us.statut} disabled={fige}
                         onChange={(e) => modifier(us.id, { statut: e.target.value })}>
                         {Object.entries(STATUTS_US).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                       </select>
                     </td>
                     <td>
-                      <button type="button" className="badge" disabled={busy}
+                      <button type="button" className="badge" disabled={fige}
                         onClick={() => cyclerEtat(us)}
                         style={{ background: etat.bg, color: etat.color, border: 'none', cursor: 'pointer', fontWeight: 700 }}>
                         {etat.label}
@@ -309,7 +312,7 @@ export default function Backlog({ membres = [] }) {
                     </td>
                     <td className="noprint">
                       <button className="btn ghost" style={{ padding: '5px 10px' }}
-                        disabled={busy} onClick={() => supprimer(us)}>Supprimer</button>
+                        disabled={fige} onClick={() => supprimer(us)}>Supprimer</button>
                     </td>
                   </tr>
                 );

@@ -7,6 +7,8 @@ const ENTREES_MENU = [
   { href: '/', label: 'Tableau de bord', icon: '◆', droit: 'dashboard.voir' },
   { href: '/saisie', label: 'Ma saisie', icon: '✎', droit: 'entree.creer.soi' },
   { href: '/reunion', label: 'Réunion vendredi', icon: '✓', droit: 'entree.valider' },
+  { href: '/backlog', label: 'Backlog produit', icon: '☰', droit: 'dashboard.voir' },
+  { href: '/equipe', label: 'Équipe', icon: '☗', droit: 'dashboard.voir' },
   { href: '/mes-stats', label: 'Mes réalisations', icon: '▦', droit: 'dashboard.voir' },
   { href: '/rapport', label: 'Rapport / PPTX', icon: '▤', droit: 'export.csv' },
   { href: '/admin', label: 'Administration', icon: '⚙', droit: 'compte.gerer.squad' },
