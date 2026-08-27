@@ -30,6 +30,7 @@ export default function Backlog({ membres = [] }) {
   const [nouveau, setNouveau] = useState(VIDE);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [refus, setRefus] = useState([]);
 
   const charger = async () => {
     const [rUs, rProjets] = await Promise.all([
@@ -68,6 +69,28 @@ export default function Backlog({ membres = [] }) {
   };
 
   const modifier = (id, champs) => appel(`/api/user-stories/${id}`, { method: 'PATCH', body: JSON.stringify(champs) });
+
+  /** Import du modèle : tout ou rien, le rapport nomme les lignes refusées. */
+  const importer = async (fichier) => {
+    setBusy(true); setMsg(null); setRefus([]);
+    const corps = new FormData();
+    corps.append('fichier', fichier);
+    let r;
+    try {
+      r = await fetch('/api/user-stories/import', { method: 'POST', body: corps });
+    } catch {
+      setBusy(false);
+      return setMsg({ t: 'err', m: 'Connexion au serveur impossible. Réessayez.' });
+    }
+    setBusy(false);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      setRefus(d.refus ?? []);
+      return setMsg({ t: 'err', m: d.error ?? 'Import impossible' });
+    }
+    await charger();
+    setMsg({ t: 'ok', m: `${d.importees} story(s) importée(s) — ${d.heures} h, ${d.storyPoints} SP` });
+  };
 
   const supprimer = async (us) => {
     if (!confirm(`Supprimer « ${us.titre} » du backlog ?`)) return;
@@ -143,6 +166,28 @@ export default function Backlog({ membres = [] }) {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* ---- Import du modèle Excel ---- */}
+      <div className="carte-blanche" style={{ marginBottom: 18 }}>
+        <div className="bloc-titre" style={{ marginBottom: 4 }}>Importer un backlog</div>
+        <p className="bloc-note" style={{ marginBottom: 12 }}>
+          Téléchargez le modèle, remplissez-le hors ligne, réimportez-le. Le classeur rappelle le barème ;
+          les story points restent calculés à l’import.
+        </p>
+        <div className="row" style={{ alignItems: 'center', gap: 12 }}>
+          <a className="btn ghost" href="/api/user-stories/template">Télécharger le modèle</a>
+          <input type="file" accept=".xlsx" disabled={busy}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) { importer(f); e.target.value = ''; } }} />
+        </div>
+        {refus.length > 0 && (
+          <div className="alerte err" style={{ marginTop: 12 }}>
+            <b>Aucune ligne importée.</b> Corrigez le classeur puis réessayez :
+            <ul style={{ margin: '8px 0 0 18px' }}>
+              {refus.map((r) => <li key={r.ligne}>Ligne {r.ligne} — {r.motif}</li>)}
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* ---- Ajout d'une user story ---- */}

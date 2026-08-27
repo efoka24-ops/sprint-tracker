@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { utilisateurCourant } from '@/lib/auth'
 import { peut } from '@/lib/roles'
-import { calculerBilan } from '@/lib/retrospective'
+import { calculerBilan, constatsAutomatiques } from '@/lib/retrospective'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,7 +54,7 @@ export async function GET(req) {
       })
     } catch (err) {
       console.error('[calculerBilan error]', err)
-      return NextResponse.json({ retrospective, bilanCalcule: '', stats: null })
+      return NextResponse.json({ retrospective, bilanCalcule: '', stats: null, constats: { FORT: [], FAIBLE: [], AMELIORATION: [] } })
     }
   } catch (err) {
     console.error('[GET retrospective]', err)

@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect, Suspense } from 'react'
 import Statut from '@/components/Statut'
+import PointsSeance from './PointsSeance'
 import { peut } from '@/lib/roles'
 
 function RetrospectiveContenu() {
@@ -14,6 +15,7 @@ function RetrospectiveContenu() {
   const [retrospective, setRetrospective] = useState(null)
   const [bilanCalcule, setBilanCalcule] = useState('')
   const [stats, setStats] = useState(null)
+  const [constats, setConstats] = useState({})
   const [editingSection, setEditingSection] = useState(null) // 'bilan', 'pointsForts', 'pointsFaibles', 'ameliorations'
   const [formData, setFormData] = useState({
     bilan: '',
@@ -82,6 +84,7 @@ function RetrospectiveContenu() {
             setRetrospective(retroData.retrospective)
             setBilanCalcule(retroData.bilanCalcule || '')
             setStats(retroData.stats || null)
+            setConstats(retroData.constats || {})
             setFormData({
               bilan: retroData.retrospective?.bilan || '',
               pointsForts: retroData.retrospective?.pointsForts || '',
@@ -299,6 +302,9 @@ function RetrospectiveContenu() {
           </p>
         </section>
       )}
+
+      {/* Points de séance : constats automatiques + ce que l'équipe ajoute */}
+      <PointsSeance sprintId={sprintId} peutEditer={peutEditer} auto={constats} />
 
       {/* Bilan global */}
       <SectionEditable

@@ -161,8 +161,27 @@ model Retrospective {
   ameliorations  String?                      // propositions pour le prochain sprint
   animateurId    String?                      // qui a animé la rétro
   animateurNom   String?
+  points         RetrospectivePoint[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+/**
+ * Point ajoute a la main en seance de retrospective, en complement de ceux que
+ * le systeme deduit des donnees du sprint. Le constat automatique ne remplace
+ * pas ce que l'equipe a vecu : il lui sert de socle.
+ */
+model RetrospectivePoint {
+  id              String        @id @default(cuid())
+  retrospective   Retrospective @relation(fields: [retrospectiveId], references: [id], onDelete: Cascade)
+  retrospectiveId String
+  type            String                       // FORT | FAIBLE | AMELIORATION
+  texte           String
+  auteurId        String?
+  auteurNom       String?
+  createdAt       DateTime      @default(now())
+
+  @@index([retrospectiveId, type])
 }
 
 model Semaine {
