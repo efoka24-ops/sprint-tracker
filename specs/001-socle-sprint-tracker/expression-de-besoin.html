@@ -1,0 +1,1524 @@
+<title>Sprint Tracker — SFD</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;0,6..72,700;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  /* ---- Jetons : encre sur papier de dossier, accent ardoise + orange de service ---- */
+  :root {
+    --papier:      #FBFAF7;
+    --papier-2:    #F3F1EC;
+    --encre:       #1B1A17;
+    --encre-2:     #4A473F;
+    --encre-3:     #757166;
+    --filet:       #DCD8CE;
+    --filet-fort:  #B9B4A7;
+    --accent:      #2F4858;
+    --accent-doux: #E4EAEE;
+    --signal:      #C4571B;
+    --signal-doux: #FAEBE0;
+    --vert:        #2C6B4F;
+    --vert-doux:   #E3F0E9;
+    --rouge:       #A32E22;
+    --rouge-doux:  #F8E4E1;
+
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+    --sans:  "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --mono:  "IBM Plex Mono", "SF Mono", Consolas, monospace;
+
+    --mesure: 74ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --papier:      #16171A;
+      --papier-2:    #1E2024;
+      --encre:       #EDEBE6;
+      --encre-2:     #BFBCB4;
+      --encre-3:     #8B887F;
+      --filet:       #303338;
+      --filet-fort:  #4A4E55;
+      --accent:      #8FB2C6;
+      --accent-doux: #1E2A33;
+      --signal:      #E88B4E;
+      --signal-doux: #2E2117;
+      --vert:        #7FBF9C;
+      --vert-doux:   #17251E;
+      --rouge:       #E08C80;
+      --rouge-doux:  #2B1917;
+    }
+  }
+  :root[data-theme="dark"] {
+    --papier:      #16171A;
+    --papier-2:    #1E2024;
+    --encre:       #EDEBE6;
+    --encre-2:     #BFBCB4;
+    --encre-3:     #8B887F;
+    --filet:       #303338;
+    --filet-fort:  #4A4E55;
+    --accent:      #8FB2C6;
+    --accent-doux: #1E2A33;
+    --signal:      #E88B4E;
+    --signal-doux: #2E2117;
+    --vert:        #7FBF9C;
+    --vert-doux:   #17251E;
+    --rouge:       #E08C80;
+    --rouge-doux:  #2B1917;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--papier);
+    color: var(--encre);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 clamp(16px, 5vw, 56px) 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .doc { max-width: 1000px; margin: 0 auto; }
+
+  /* ---- Page de garde ---- */
+  .garde {
+    padding: clamp(48px, 9vw, 104px) 0 44px;
+    border-bottom: 3px double var(--filet-fort);
+    display: flex; flex-direction: column; gap: 26px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--encre-3);
+  }
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(38px, 7vw, 64px);
+    line-height: 1.02; font-weight: 600; letter-spacing: -.02em;
+    margin: 0; text-wrap: balance;
+  }
+  .sous-titre {
+    font-family: var(--serif);
+    font-size: clamp(19px, 2.4vw, 25px);
+    font-style: italic; font-weight: 400;
+    color: var(--encre-2); margin: 0; max-width: var(--mesure);
+  }
+  .perimetre { max-width: var(--mesure); color: var(--encre-2); margin: 0; }
+
+  .cartouche {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 1px; background: var(--filet);
+    border: 1px solid var(--filet); margin-top: 8px;
+  }
+  .cartouche div { background: var(--papier); padding: 13px 15px; }
+  .cartouche dt {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--encre-3); margin: 0 0 5px;
+  }
+  .cartouche dd {
+    margin: 0; font-weight: 600; font-size: 15px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- Structure ---- */
+  section { padding-top: 52px; }
+  h2 {
+    font-family: var(--serif);
+    font-size: clamp(25px, 3.4vw, 34px);
+    font-weight: 600; letter-spacing: -.015em;
+    margin: 0 0 6px; text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-size: 13px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--encre-2);
+    margin: 30px 0 10px;
+    padding-bottom: 6px; border-bottom: 1px solid var(--filet);
+  }
+  .chapeau { color: var(--encre-2); max-width: var(--mesure); margin: 0 0 22px; }
+  p { max-width: var(--mesure); }
+
+  /* ---- Tableaux ---- */
+  .cadre { overflow-x: auto; border: 1px solid var(--filet); margin: 14px 0 26px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 520px; }
+  th, td {
+    text-align: left; padding: 10px 14px;
+    border-bottom: 1px solid var(--filet); vertical-align: top;
+  }
+  thead th {
+    background: var(--papier-2);
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--encre-2);
+    border-bottom: 1px solid var(--filet-fort); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .code {
+    font-family: var(--mono); font-size: 12.5px; font-weight: 600;
+    color: var(--accent); white-space: nowrap;
+  }
+  .etape { font-family: var(--mono); font-size: 13px; color: var(--encre-3); width: 44px; }
+  .acteur { white-space: nowrap; font-weight: 500; width: 130px; }
+
+  /* ---- Cas d'usage ---- */
+  .cas {
+    padding-top: 46px; margin-top: 40px;
+    border-top: 1px solid var(--filet);
+    scroll-margin-top: 20px;
+  }
+  .cas-tete { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .cas-code {
+    font-family: var(--mono); font-size: 13px; font-weight: 600;
+    color: var(--papier); background: var(--accent);
+    padding: 4px 9px; letter-spacing: .04em;
+  }
+  .cas h2 { margin: 0; font-size: clamp(22px, 3vw, 29px); }
+  .fiche {
+    display: grid; grid-template-columns: 150px 1fr;
+    gap: 1px; background: var(--filet);
+    border: 1px solid var(--filet); margin: 20px 0 6px;
+  }
+  .fiche dt {
+    background: var(--papier-2); padding: 11px 14px;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--encre-2);
+  }
+  .fiche dd { background: var(--papier); padding: 11px 14px; margin: 0; }
+  @media (max-width: 560px) { .fiche { grid-template-columns: 1fr; } }
+
+  ul { padding-left: 20px; max-width: var(--mesure); }
+  li { margin-bottom: 5px; }
+  li::marker { color: var(--filet-fort); }
+
+  /* ---- Encadrés ---- */
+  .note {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-doux);
+    padding: 14px 18px; margin: 20px 0; max-width: var(--mesure);
+  }
+  .note.alerte { border-left-color: var(--signal); background: var(--signal-doux); }
+  .note p { margin: 0; max-width: none; }
+  .note p + p { margin-top: 9px; }
+  .note-titre {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--encre-2);
+    display: block; margin-bottom: 6px;
+  }
+
+  .pastille {
+    display: inline-block; font-family: var(--mono);
+    font-size: 10.5px; font-weight: 600; letter-spacing: .06em;
+    padding: 2px 8px; white-space: nowrap;
+  }
+  .p-oui { background: var(--vert-doux); color: var(--vert); }
+  .p-non { background: var(--rouge-doux); color: var(--rouge); }
+  .p-att { background: var(--signal-doux); color: var(--signal); }
+
+  /* ---- Sommaire ---- */
+  .sommaire { columns: 2; column-gap: 40px; max-width: none; }
+  @media (max-width: 620px) { .sommaire { columns: 1; } }
+  .sommaire a {
+    display: flex; gap: 10px; align-items: baseline;
+    color: var(--encre); text-decoration: none;
+    padding: 6px 0; border-bottom: 1px dotted var(--filet);
+    break-inside: avoid;
+  }
+  .sommaire a:hover { color: var(--accent); }
+  .sommaire a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .sommaire .code { flex: none; }
+
+  /* ---- Signatures ---- */
+  .signature-ligne {
+    border-bottom: 1px solid var(--filet-fort);
+    min-height: 34px; display: block;
+  }
+
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="doc">
+
+  <header class="garde">
+    <div class="eyebrow">Orange Cameroun · Squad Digital</div>
+    <h1>Sprint Tracker</h1>
+    <p class="sous-titre">Spécifications Fonctionnelles Détaillées</p>
+    <p class="perimetre">
+      Pilotage de la capacité, de l'engagement et des instances de validation d'une
+      squad, du cadrage en faisabilité jusqu'à la mise en production.
+    </p>
+
+    <dl class="cartouche">
+      <div><dt>Version</dt><dd>1.0</dd></div>
+      <div><dt>Date</dt><dd>27/08/2026</dd></div>
+      <div><dt>Statut</dt><dd>Brouillon</dd></div>
+      <div><dt>Cas d'usage</dt><dd>16</dd></div>
+      <div><dt>Auteur</dt><dd>Emmanuel FOKA</dd></div>
+      <div><dt>Validé par</dt><dd style="color:var(--encre-3);font-weight:400">À compléter</dd></div>
+    </dl>
+  </header>
+
+  <section>
+    <h2>Historique des modifications</h2>
+    <div class="cadre">
+      <table>
+        <thead>
+          <tr><th>Version</th><th>Date</th><th>Auteur</th><th>Demandes / Changes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="code">1.0</td><td>27/08/2026</td><td>Emmanuel FOKA</td>
+            <td>Version initiale — 16 cas d'usage (T01 à T16), 34 règles de gestion (RG1 à RG34).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Table des matières</h2>
+    <nav class="sommaire">
+      <a href="#cr"><span class="code">CR</span><span>Fiche de demande de changement</span></a>
+      <a href="#t01"><span class="code">T01</span><span>Connexion à la plateforme</span></a>
+      <a href="#t02"><span class="code">T02</span><span>Création d'une squad</span></a>
+      <a href="#t03"><span class="code">T03</span><span>Création des comptes et attribution des rôles</span></a>
+      <a href="#t04"><span class="code">T04</span><span>Création d'un sprint</span></a>
+      <a href="#t05"><span class="code">T05</span><span>Déclaration des absences et des jours fériés</span></a>
+      <a href="#t06"><span class="code">T06</span><span>Constitution du portefeuille de projets</span></a>
+      <a href="#t07"><span class="code">T07</span><span>Saisie d'un objectif hebdomadaire</span></a>
+      <a href="#t08"><span class="code">T08</span><span>Affectation d'un objectif à un porteur</span></a>
+      <a href="#t09"><span class="code">T09</span><span>Consultation de la bande passante</span></a>
+      <a href="#t10"><span class="code">T10</span><span>Validation des prérequis du sprint</span></a>
+      <a href="#t11"><span class="code">T11</span><span>Validation d'une instance DAB ou CAB</span></a>
+      <a href="#t12"><span class="code">T12</span><span>Réunion de validation du vendredi</span></a>
+      <a href="#t13"><span class="code">T13</span><span>Demande et arbitrage d'une rallonge</span></a>
+      <a href="#t14"><span class="code">T14</span><span>Clôture d'une semaine et d'un sprint</span></a>
+      <a href="#t15"><span class="code">T15</span><span>Rétrospective de sprint</span></a>
+      <a href="#t16"><span class="code">T16</span><span>Restitution et tableau public</span></a>
+      <a href="#rg"><span class="code">RG</span><span>Récapitulatif des règles de gestion</span></a>
+      <a href="#sign"><span class="code">SIG</span><span>Validation et signatures</span></a>
+    </nav>
+  </section>
+
+  <section id="cr">
+    <h2>Fiche de demande de changement</h2>
+
+    <h3>1. Identification de la demande</h3>
+    <div class="cadre">
+      <table>
+        <tbody>
+          <tr><th style="width:230px">Nom / Direction</th><td>Emmanuel FOKA — Scrum Master, Squad Digital, Direction Technique Orange Cameroun</td></tr>
+          <tr><th>Date de la demande</th><td>27/08/2026</td></tr>
+          <tr><th>Référence / ID Perfit</th><td>À affecter à l'ouverture du ticket</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>2. Description et contexte</h3>
+    <div class="cadre">
+      <table>
+        <tbody>
+          <tr>
+            <th style="width:230px">Description du changement</th>
+            <td>
+              Créer une plateforme de pilotage de sprint remplaçant le classeur Excel partagé.
+              Elle porte la capacité calculée de l'équipe, l'engagement issu des faisabilités,
+              la planification hebdomadaire par développeur, les checklists documentaires
+              exigées à chaque instance de validation (DAB, CAB ACL, CAB Go Live), et la
+              restitution vers les parties prenantes.
+            </td>
+          </tr>
+          <tr>
+            <th>Raisons du changement</th>
+            <td>
+              <p style="margin:0 0 10px">
+                <strong>Le déclencheur : l'incapacité à répondre quand la livraison prend du retard.</strong>
+                À chaque point d'avancement où le sprint dérivait, la question « pourquoi ? »
+                restait sans réponse étayée. Nous avions la sensation — désagréable et récurrente —
+                de ne pas disposer des éléments de réponse : ni la capacité réellement disponible
+                de l'équipe, ni ce qui avait été engagé, ni ce qui avait bloqué et depuis quand.
+                Les explications se construisaient de mémoire, en réunion, et ne convainquaient
+                personne, à commencer par nous.
+              </p>
+              <p style="margin:0 0 10px">
+                Trois causes racines à cette absence d'éléments :
+              </p>
+              <ul style="margin:0">
+                <li><strong>Une capacité fictive.</strong> Les 600 h d'un sprint étaient un chiffre rond posé à la main, que rien ne reliait aux congés, aux fériés ni à la composition réelle de l'équipe.</li>
+                <li><strong>Un engagement illisible.</strong> L'enveloppe estimée en faisabilité était recopiée sur chaque ligne hebdomadaire : 280 h de projet apparaissaient en 640 h, et le total affiché — 1 116 h — était sans rapport avec les 600 h disponibles.</li>
+                <li><strong>Des passages en instance non tracés.</strong> Les documents exigés en DAB et en CAB se vérifiaient de mémoire ; un dossier incomplet ne se découvrait qu'en comité.</li>
+              </ul>
+            </td>
+          </tr>
+          <tr>
+            <th>Origine de la demande</th>
+            <td>Équipe IT — Squad Digital. Constat interne partagé en rétrospective de sprint.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>3. Objectifs et périmètre</h3>
+    <div class="cadre">
+      <table>
+        <tbody>
+          <tr>
+            <th style="width:230px">Objectif</th>
+            <td>
+              Permettre au Scrum Master de justifier, à tout moment et en moins de cinq minutes,
+              l'écart entre ce qui était prévu et ce qui est livré, à partir de données saisies
+              une seule fois : capacité calculée, engagement issu des faisabilités, consommation
+              réelle et blocages datés.
+            </td>
+          </tr>
+          <tr>
+            <th>Client cible</th>
+            <td>
+              Squads de développement d'Orange Cameroun — Scrum Masters, Tech Leads,
+              développeurs et observateurs métier. Périmètre initial : Squad Digital,
+              6 collaborateurs. Extension prévue aux autres squads sans modification du socle.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>4. Planification et priorité</h3>
+    <div class="cadre">
+      <table>
+        <tbody>
+          <tr>
+            <th style="width:230px">Priorité</th>
+            <td>
+              <span class="pastille p-att">Haute</span>
+              — chaque sprint conduit sans ces éléments reproduit l'écart de pilotage
+              et prive le comité de suivi d'informations vérifiables.
+            </td>
+          </tr>
+          <tr>
+            <th>Date de mise en production souhaitée</th>
+            <td>Socle déjà en service. Intégration Keycloak souhaitée avant le prochain cycle de revue des accès — échéance flexible.</td>
+          </tr>
+          <tr>
+            <th>Dépendances / Prérequis</th>
+            <td>Base PostgreSQL managée · Hébergement Vercel · Instance Keycloak pour la fédération des identités (cible) · Référentiel Perfit pour les numéros de ticket</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>5. Informations à transmettre au régulateur</h3>
+    <div class="cadre">
+      <table>
+        <tbody>
+          <tr>
+            <th style="width:230px">Soumission requise ?</th>
+            <td>
+              <span class="pastille p-non">Non</span>
+              — outil interne de pilotage. Aucune opération financière, aucun service client,
+              aucune donnée d'abonné. Les données traitées sont des données professionnelles
+              de collaborateurs (identité, rôle, temps de travail).
+            </td>
+          </tr>
+          <tr><th>Nature de l'information</th><td>Sans objet</td></tr>
+          <tr><th>Délai réglementaire</th><td>Sans objet</td></tr>
+          <tr>
+            <th>Documents requis</th>
+            <td>Aucun document régulateur. En interne : la présente SFD et la notice de traitement des données personnelles collaborateurs.</td>
+          </tr>
+          <tr><th>Responsable régulatoire</th><td>Sans objet</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <span class="note-titre">Acteurs du document</span>
+      <p>
+        <strong>Super admin</strong> — administre la plateforme, toutes squads confondues.
+        <strong>Scrum Master</strong> — pilote sa squad. <strong>Tech Lead</strong> — anime la
+        revue technique. <strong>Développeur</strong> — porte les objectifs.
+        <strong>Observateur</strong> — consulte. <strong>Système</strong> — traitements
+        automatiques (calculs, contrôles, refus).
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ T01 ============ -->
+  <article class="cas" id="t01">
+    <div class="cas-tete"><span class="cas-code">T01</span><h2>Connexion à la plateforme</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Tout collaborateur disposant d'un compte</dd>
+      <dt>Objectif</dt><dd>Permettre à un collaborateur d'accéder à la plateforme avec les droits de son rôle, et l'obliger à remplacer le mot de passe provisoire qui lui a été remis.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>Un compte a été créé pour le collaborateur par le super admin ou son Scrum Master.</li>
+      <li>Le compte est actif.</li>
+      <li>Le collaborateur dispose de son adresse professionnelle et de son mot de passe.</li>
+      <li>La plateforme est accessible.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>Une session est ouverte et le tableau de bord du périmètre de l'utilisateur s'affiche.</li>
+      <li>La date de dernière connexion est enregistrée.</li>
+      <li>La navigation ne présente que les écrans autorisés par le rôle.</li>
+      <li>En cas de mot de passe provisoire, le changement a été effectué et les autres sessions ouvertes sont révoquées.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Collaborateur</td><td>Il ouvre l'adresse de la plateforme.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Système</td><td>Le système constate l'absence de session et affiche l'écran de connexion.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Collaborateur</td><td>Il saisit son adresse professionnelle et son mot de passe.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Système</td><td>Le système vérifie les identifiants et l'état actif du compte.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Système</td><td>Le système ouvre la session, enregistre la date de connexion et charge les droits du rôle.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Système</td><td>Si le mot de passe est provisoire, le système impose l'écran de changement.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Collaborateur</td><td>Il accède au tableau de bord, avec la seule navigation autorisée par son rôle.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE1</td><td>Identifiants incorrects</td><td>Message « Identifiants incorrects », sans préciser lequel des deux champs est en cause.</td></tr>
+        <tr><td class="code">SE2</td><td>Compte désactivé</td><td>Message invitant à contacter le super admin ; la session n'est pas ouverte.</td></tr>
+        <tr><td class="code">SE3</td><td>Nouveau mot de passe inférieur à 8 caractères</td><td>Le changement est refusé et le motif est affiché.</td></tr>
+        <tr><td class="code">SE4</td><td>Session expirée en cours d'utilisation</td><td>Redirection vers la connexion, en conservant la page demandée pour y revenir après identification.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG1</td><td>Toute page autre que la connexion et le tableau public exige une session valide.</td></tr>
+        <tr><td class="code">RG2</td><td>Un mot de passe est stocké haché (scrypt, sel unique par compte) ; il n'est jamais restitué en clair, ni affiché, ni journalisé.</td></tr>
+        <tr><td class="code">RG3</td><td>Un changement de mot de passe incrémente la version de session, ce qui révoque toutes les autres sessions ouvertes du compte.</td></tr>
+        <tr><td class="code">RG4</td><td>Un compte désactivé ne peut ouvrir aucune session, et ses sessions en cours cessent d'être valides.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <!-- ============ T02 ============ -->
+  <article class="cas" id="t02">
+    <div class="cas-tete"><span class="cas-code">T02</span><h2>Création d'une squad</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Super admin (ou Scrum Master sans squad, pour la sienne)</dd>
+      <dt>Objectif</dt><dd>Créer l'entité qui regroupe une équipe, ses sprints et ses projets, et régler la base de calcul de sa capacité : heures par jour et temps de cérémonie retiré.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>L'utilisateur est connecté et dispose du droit de création de squad.</li>
+      <li>Le nom envisagé n'est pas déjà porté par une autre squad.</li>
+      <li>La base horaire de référence de l'équipe est connue.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>La squad existe et peut recevoir des comptes, des projets et des sprints.</li>
+      <li>Sa base de calcul est enregistrée : heures par jour, minutes de daily, rôles concernés par le daily.</li>
+      <li>Les capacités des sprints ouverts de la squad ont été recalculées.</li>
+      <li>Un Scrum Master sans squad devient rattaché à celle qu'il vient de créer.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Super admin</td><td>Il ouvre l'administration, onglet Squads.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Super admin</td><td>Il saisit le nom de la squad et valide la création.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Système</td><td>Le système vérifie l'unicité du nom et crée la squad avec 8 h/jour et aucun daily déduit.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Super admin</td><td>Il ajuste les heures par jour si la base de l'équipe diffère.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Super admin</td><td>Il saisit la durée du daily en minutes.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Système</td><td>Le système enregistre le réglage et recalcule la capacité de tous les sprints ouverts de la squad.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Super admin</td><td>Il constate la nouvelle capacité affichée sur les sprints concernés.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE5</td><td>Nom déjà porté par une autre squad</td><td>Création refusée, le nom en conflit est indiqué.</td></tr>
+        <tr><td class="code">SE6</td><td>Heures par jour hors de l'intervalle 1–24</td><td>Modification refusée, l'intervalle admis est rappelé.</td></tr>
+        <tr><td class="code">SE7</td><td>Daily hors de l'intervalle 0–240 minutes</td><td>Modification refusée : un daily ne peut pas absorber la journée.</td></tr>
+        <tr><td class="code">SE8</td><td>Suppression d'une squad portant des membres ou des sprints</td><td>Suppression refusée tant que la squad n'est pas vide.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG5</td><td>Le nom d'une squad est unique sur l'ensemble de la plateforme.</td></tr>
+        <tr><td class="code">RG6</td><td>Toute modification des heures par jour, du daily ou des rôles concernés déclenche le recalcul de la capacité des sprints ouverts de la squad.</td></tr>
+        <tr><td class="code">RG7</td><td>Le daily ne peut être déduit qu'aux rôles qui produisent de la capacité, soit Tech Lead et Développeur.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <!-- ============ T03 ============ -->
+  <article class="cas" id="t03">
+    <div class="cas-tete"><span class="cas-code">T03</span><h2>Création des comptes et attribution des rôles</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Super admin (tous comptes) ou Scrum Master (sa squad uniquement)</dd>
+      <dt>Objectif</dt><dd>Doter chaque collaborateur d'un compte portant le rôle qui détermine l'intégralité de ses droits, sans attribution de permission à la carte.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>L'utilisateur dispose du droit d'administrer des comptes, globalement ou sur sa squad.</li>
+      <li>La squad d'accueil existe.</li>
+      <li>L'adresse professionnelle du collaborateur est connue et n'est pas déjà utilisée.</li>
+      <li>Le rôle à attribuer figure parmi ceux que l'utilisateur peut attribuer.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>Le compte existe, actif, rattaché à une squad et porteur d'un rôle.</li>
+      <li>Un mot de passe provisoire a été généré et affiché une seule fois.</li>
+      <li>Le compte doit changer son mot de passe à la première connexion.</li>
+      <li>Si le rôle produit de la capacité, celle des sprints ouverts a été recalculée.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Scrum Master</td><td>Il ouvre l'administration, onglet Comptes.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Scrum Master</td><td>Il saisit le nom et l'adresse professionnelle du collaborateur.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Scrum Master</td><td>Il choisit le rôle parmi ceux qu'il peut attribuer : Tech Lead, Développeur ou Observateur.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Système</td><td>Le système vérifie l'unicité de l'adresse et la légitimité du rôle demandé.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Système</td><td>Le système crée le compte, génère un mot de passe provisoire et l'affiche une seule fois.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Scrum Master</td><td>Il transmet le mot de passe provisoire au collaborateur par un canal distinct.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Système</td><td>Le système recalcule la capacité des sprints ouverts si le rôle créé produit de la capacité.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE9</td><td>Adresse déjà utilisée par un autre compte</td><td>Création refusée, le conflit est signalé.</td></tr>
+        <tr><td class="code">SE10</td><td>Un Scrum Master tente d'attribuer le rôle Super admin ou Scrum Master</td><td>Refus : ce rôle ne figure pas parmi ceux qu'il peut attribuer.</td></tr>
+        <tr><td class="code">SE11</td><td>Un Scrum Master tente d'agir sur un compte d'une autre squad</td><td>Refus : le compte est hors de son périmètre.</td></tr>
+        <tr><td class="code">SE12</td><td>Rétrogradation ou désactivation du dernier super admin actif</td><td>Refus : la plateforme doit conserver un administrateur.</td></tr>
+        <tr><td class="code">SE13</td><td>Un utilisateur tente de modifier son propre rôle</td><td>Refus : nul ne modifie son propre niveau de droits.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG8</td><td>Le rôle porte l'intégralité des droits. Aucun droit ne s'attribue individuellement.</td></tr>
+        <tr><td class="code">RG9</td><td>Le super admin administre tous les comptes ; le Scrum Master administre les seuls comptes non privilégiés de sa propre squad.</td></tr>
+        <tr><td class="code">RG10</td><td>Un Scrum Master ne peut attribuer que les rôles Tech Lead, Développeur et Observateur.</td></tr>
+        <tr><td class="code">RG11</td><td>La plateforme conserve en permanence au moins un compte super admin actif.</td></tr>
+        <tr><td class="code">RG12</td><td>Un mot de passe provisoire s'affiche une seule fois et ne peut être réaffiché ; seule une réinitialisation en produit un nouveau.</td></tr>
+        <tr><td class="code">RG13</td><td>Un utilisateur dont le rôle n'ouvre pas un écran est redirigé, jamais servi un écran vide.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <!-- ============ T04 ============ -->
+  <article class="cas" id="t04">
+    <div class="cas-tete"><span class="cas-code">T04</span><h2>Création d'un sprint</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Scrum Master (ou super admin)</dd>
+      <dt>Objectif</dt><dd>Ouvrir un cycle de travail sur une période donnée, le découper en semaines de revue et en déduire la capacité réellement disponible, sans qu'aucun chiffre ne soit saisi à la main.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>L'utilisateur dispose du droit de création de sprint.</li>
+      <li>Il est rattaché à une squad, ou désigne la squad cible s'il est super admin.</li>
+      <li>La squad compte au moins un membre produisant de la capacité.</li>
+      <li>La période envisagée ne chevauche aucun sprint existant de la squad.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>Le sprint existe, numéroté et rattaché à la squad.</li>
+      <li>La période est découpée en semaines de revue, du lundi au vendredi.</li>
+      <li>La capacité de chaque semaine et le total du sprint sont calculés et enregistrés.</li>
+      <li>Les objectifs hebdomadaires peuvent être saisis sur les semaines ouvertes.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Scrum Master</td><td>Il ouvre l'administration, onglet Sprints.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Scrum Master</td><td>Il saisit le numéro du sprint et sa période, du premier au dernier jour.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Système</td><td>Le système vérifie l'unicité du numéro dans la squad et l'absence de chevauchement.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Système</td><td>Le système découpe la période en semaines de revue s'achevant le vendredi.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Système</td><td>Le système calcule la capacité de chaque semaine : membres producteurs × jours ouvrés hors fériés et congés × heures nettes du daily.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Système</td><td>Le système enregistre la capacité totale du sprint.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Scrum Master</td><td>Il consulte la capacité obtenue et confronte l'engagement du portefeuille à ce plafond.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE14</td><td>Numéro de sprint déjà utilisé dans la squad</td><td>Création refusée, le conflit est nommé.</td></tr>
+        <tr><td class="code">SE15</td><td>Période chevauchant un sprint existant</td><td>Création refusée, le sprint en conflit est nommé.</td></tr>
+        <tr><td class="code">SE16</td><td>Date de fin antérieure à la date de début</td><td>Création refusée.</td></tr>
+        <tr><td class="code">SE17</td><td>Modification de période réduisant le nombre de semaines alors que des objectifs sont saisis</td><td>Refus, avec le nombre de saisies concernées et le nombre de semaines à conserver.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG14</td><td>La capacité d'une semaine vaut : Σ des membres producteurs × (jours ouvrés − fériés − congés) × (heures par jour − durée du daily).</td></tr>
+        <tr><td class="code">RG15</td><td>Seuls les rôles Tech Lead et Développeur produisent de la capacité. Le Scrum Master anime le sprint sans y porter de charge.</td></tr>
+        <tr><td class="code">RG16</td><td>La capacité est toujours calculée, jamais saisie. Aucun écran ne permet de la forcer.</td></tr>
+        <tr><td class="code">RG17</td><td>Le numéro d'un sprint est unique au sein d'une squad, et deux sprints d'une même squad ne peuvent se chevaucher.</td></tr>
+        <tr><td class="code">RG18</td><td>Une semaine de revue court du lundi au vendredi ; le vendredi est le point de validation.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <!-- ============ T05 ============ -->
+  <article class="cas" id="t05">
+    <div class="cas-tete"><span class="cas-code">T05</span><h2>Déclaration des absences et des jours fériés</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Scrum Master, ou collaborateur pour ses propres absences</dd>
+      <dt>Objectif</dt><dd>Répercuter les absences et les jours chômés sur la capacité, afin que le sprint reflète la disponibilité réelle de l'équipe et non un effectif théorique.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>L'utilisateur est connecté.</li>
+      <li>Le collaborateur concerné appartient au périmètre de l'utilisateur.</li>
+      <li>Les dates de l'absence sont connues.</li>
+      <li>Un sprint ouvert couvre au moins partiellement la période.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>L'absence ou le jour férié est enregistré.</li>
+      <li>La capacité des semaines concernées a diminué du volume correspondant.</li>
+      <li>La capacité totale des sprints ouverts a été mise à jour.</li>
+      <li>La bande passante du collaborateur reflète sa disponibilité réduite.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Scrum Master</td><td>Il ouvre l'administration, onglet Calendrier.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Scrum Master</td><td>Il sélectionne le collaborateur et saisit les dates de début et de fin de l'absence.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Système</td><td>Le système vérifie que le collaborateur relève du périmètre de l'utilisateur.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Système</td><td>Le système ne retient que les jours ouvrés de la période, week-ends et fériés exclus.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Système</td><td>Le système recalcule la capacité des semaines concernées et le total des sprints ouverts.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Scrum Master</td><td>Il constate la capacité réduite sur le sprint et sur la bande passante du collaborateur.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE18</td><td>Collaborateur hors du périmètre de l'utilisateur</td><td>Enregistrement refusé.</td></tr>
+        <tr><td class="code">SE19</td><td>Absence entièrement hors des périodes de sprint</td><td>Enregistrement accepté, sans effet sur la capacité.</td></tr>
+        <tr><td class="code">SE20</td><td>Jour férié tombant un week-end</td><td>Enregistré, sans effet : il ne retire aucun jour ouvré.</td></tr>
+        <tr><td class="code">SE21</td><td>Absence couvrant l'intégralité d'une semaine</td><td>Capacité nulle pour ce collaborateur sur la semaine, et aucun daily décompté.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG19</td><td>Un jour férié sans squad désignée s'applique à toutes les squads ; rattaché à une squad, il ne vaut que pour elle.</td></tr>
+        <tr><td class="code">RG20</td><td>Un jour à la fois férié et couvert par un congé n'est décompté qu'une seule fois.</td></tr>
+        <tr><td class="code">RG21</td><td>Le daily n'est retiré que sur les jours effectivement travaillés : un jour d'absence n'en consomme pas.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <!-- ============ T06 ============ -->
+  <article class="cas" id="t06">
+    <div class="cas-tete"><span class="cas-code">T06</span><h2>Constitution du portefeuille de projets</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Scrum Master (ou super admin)</dd>
+      <dt>Objectif</dt><dd>Enregistrer, pour chaque projet issu de la faisabilité, l'enveloppe estimée en heures et en story points ainsi que ses porteurs, afin que l'engagement de la squad se lise en une ligne et se compare à la capacité.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>L'utilisateur dispose du droit de création de sprint et de projet.</li>
+      <li>Il est rattaché à une squad.</li>
+      <li>La faisabilité du projet a été réalisée : heures et story points sont arrêtés.</li>
+      <li>Le ticket Perfit du projet est connu.</li>
+      <li>Les porteurs pressentis disposent d'un compte actif dans la squad.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>Le projet existe avec son ticket Perfit, son enveloppe et ses porteurs.</li>
+      <li>L'engagement de la squad intègre l'enveloppe si le projet est actif.</li>
+      <li>La charge — engagement rapporté à la capacité du sprint — est affichée.</li>
+      <li>Les objectifs hebdomadaires peuvent s'imputer sur ce projet.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Scrum Master</td><td>Il ouvre l'administration, onglet Projets.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Scrum Master</td><td>Il saisit le ticket Perfit, le libellé du projet, l'enveloppe en heures et les story points issus de la faisabilité.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Système</td><td>Le système vérifie que le ticket n'est pas déjà porté par un autre projet de la squad.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Système</td><td>Le système crée le projet au statut Actif et l'intègre à l'engagement.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Scrum Master</td><td>Il désigne le ou les porteurs du projet parmi les membres de la squad.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Système</td><td>Le système enregistre les porteurs et recalcule l'engagement, les story points et la charge.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Scrum Master</td><td>Il compare l'engagement obtenu à la capacité du sprint et arbitre le portefeuille.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE22</td><td>Ticket Perfit déjà porté par un projet de la squad</td><td>Création refusée, le projet en conflit est nommé.</td></tr>
+        <tr><td class="code">SE23</td><td>Porteur désigné hors de la squad du projet</td><td>Refus : on ne porte pas un projet d'une autre équipe.</td></tr>
+        <tr><td class="code">SE24</td><td>Enveloppe ou story points négatifs</td><td>Enregistrement refusé.</td></tr>
+        <tr><td class="code">SE25</td><td>Suppression d'un projet portant des objectifs hebdomadaires</td><td>Refus, avec le nombre d'objectifs rattachés et l'invitation à passer le projet en Terminé.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG22</td><td>L'enveloppe de faisabilité est portée par le projet et par lui seul. Elle n'est jamais recopiée sur les lignes hebdomadaires.</td></tr>
+        <tr><td class="code">RG23</td><td>Un projet est identifié par son ticket Perfit, unique au sein de la squad.</td></tr>
+        <tr><td class="code">RG24</td><td>Un projet peut avoir plusieurs porteurs.</td></tr>
+        <tr><td class="code">RG25</td><td>L'engagement de la squad est la somme des enveloppes des projets Actifs. Un projet Bloqué ou Terminé en est exclu.</td></tr>
+        <tr><td class="code">RG26</td><td>Les heures exclues de l'engagement restent affichées, avec le motif de leur exclusion.</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="note">
+      <span class="note-titre">Illustration — Squad Digital, sprint #01</span>
+      <p>
+        Quatre projets actifs totalisent <strong>413 h et 89 SP</strong> ; GTR Flow, bloqué,
+        met <strong>12 h</strong> de côté sans les faire disparaître. Rapporté aux
+        <strong>600 h</strong> de capacité, l'engagement représente une charge de
+        <strong>69 %</strong>. Avant la règle RG22, ce même portefeuille s'affichait
+        à 1 116 h — sans rapport avec la capacité, donc inexploitable en comité.
+      </p>
+    </div>
+  </article>
+
+  <!-- ============ T07 ============ -->
+  <article class="cas" id="t07">
+    <div class="cas-tete"><span class="cas-code">T07</span><h2>Saisie d'un objectif hebdomadaire</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Développeur (pour lui-même)</dd>
+      <dt>Objectif</dt><dd>Déclarer ce que le collaborateur s'engage à produire dans la semaine, sur un projet du portefeuille, avec les heures réellement prévues pour cette semaine.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>Le collaborateur est connecté et son rôle autorise la saisie.</li>
+      <li>Un sprint de sa squad est ouvert et comporte au moins une semaine non clôturée.</li>
+      <li>Le projet concerné existe au portefeuille avec son ticket Perfit.</li>
+      <li>Le collaborateur connaît les heures qu'il consacrera à cet objectif dans la semaine.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>L'objectif est enregistré sur la semaine choisie, au nom du collaborateur.</li>
+      <li>Les heures prévues sont imputées sur sa bande passante de la semaine.</li>
+      <li>Le total de ses heures sur la semaine ne dépasse pas sa capacité.</li>
+      <li>L'objectif apparaît au tableau de bord et à la réunion de validation.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Développeur</td><td>Il ouvre l'écran Ma saisie.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Développeur</td><td>Il choisit la semaine ouverte concernée.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Développeur</td><td>Il saisit le ticket Perfit, le projet et l'objectif de la semaine.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Développeur</td><td>Il saisit les heures qu'il prévoit d'y consacrer cette semaine.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Système</td><td>Le système vérifie que la semaine est ouverte et que le collaborateur saisit bien pour lui-même.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Système</td><td>Le système contrôle que le total de ses heures sur la semaine tient dans sa capacité.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Système</td><td>Le système enregistre l'objectif et met à jour la bande passante.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE26</td><td>Heures supérieures à la capacité hebdomadaire du porteur</td><td>Saisie refusée. Le message rappelle la capacité disponible et distingue l'enveloppe du projet, qui se règle au portefeuille, des heures de la semaine.</td></tr>
+        <tr><td class="code">SE27</td><td>Semaine clôturée</td><td>Saisie refusée, sauf pour les rôles qui pilotent la squad.</td></tr>
+        <tr><td class="code">SE28</td><td>Tentative de saisie au nom d'un autre collaborateur sans le droit d'affectation</td><td>Refus : chacun ne saisit que ses propres objectifs.</td></tr>
+        <tr><td class="code">SE29</td><td>Statut d'exécution demandé dont les prérequis documentaires ne sont pas validés</td><td>Refus, la checklist manquante est nommée.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG27</td><td>Une ligne hebdomadaire porte les heures prévues pour sa seule semaine, jamais l'enveloppe du projet.</td></tr>
+        <tr><td class="code">RG28</td><td>La somme des heures prévues d'un porteur sur une semaine ne peut excéder sa capacité hebdomadaire. Le contrôle porte sur la somme, non sur chaque ligne isolément.</td></tr>
+        <tr><td class="code">RG29</td><td>La clôture d'une semaine ferme la saisie, sauf pour les rôles qui pilotent la squad.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <!-- ============ T08 ============ -->
+  <article class="cas" id="t08">
+    <div class="cas-tete"><span class="cas-code">T08</span><h2>Affectation d'un objectif à un porteur</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Scrum Master (ou super admin)</dd>
+      <dt>Objectif</dt><dd>Confier un objectif à un membre de la squad, ou le transférer d'un porteur ou d'une semaine à l'autre, lors d'un arbitrage de charge.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>L'utilisateur dispose du droit d'affectation.</li>
+      <li>Le porteur visé est actif et appartient à la squad du sprint.</li>
+      <li>La semaine de destination est ouverte.</li>
+      <li>La capacité résiduelle du porteur sur cette semaine permet d'accueillir l'objectif.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>L'objectif est porté par le collaborateur désigné, sur la semaine désignée.</li>
+      <li>Les bandes passantes de l'ancien et du nouveau porteur sont mises à jour.</li>
+      <li>L'objectif apparaît dans la saisie du nouveau porteur.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Scrum Master</td><td>Il ouvre l'administration, onglet Objectifs.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Scrum Master</td><td>Il consulte les bandes passantes pour repérer qui peut prendre un sujet de plus.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Scrum Master</td><td>Il sélectionne l'objectif et désigne le porteur ainsi que la semaine.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Système</td><td>Le système vérifie que le porteur est actif et appartient à la squad du sprint.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Système</td><td>Le système contrôle que la capacité du porteur absorbe les heures affectées.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Système</td><td>Le système enregistre l'affectation et met à jour les deux bandes passantes.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Scrum Master</td><td>Il vérifie l'équilibre de charge obtenu sur la semaine.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE30</td><td>Porteur appartenant à une autre squad</td><td>Affectation refusée.</td></tr>
+        <tr><td class="code">SE31</td><td>Porteur désactivé</td><td>Affectation refusée.</td></tr>
+        <tr><td class="code">SE32</td><td>Réaffectation tentée par un rôle sans droit d'affectation</td><td>Refus : la réaffectation relève du pilotage de la squad.</td></tr>
+        <tr><td class="code">SE33</td><td>Capacité du porteur insuffisante sur la semaine visée</td><td>Refus, avec la capacité disponible et les heures demandées.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG30</td><td>Seuls le super admin et le Scrum Master peuvent affecter un objectif à un autre porteur ou le déplacer d'une semaine à l'autre.</td></tr>
+        <tr><td class="code">RG31</td><td>Un porteur doit appartenir à la squad du sprint auquel l'objectif se rattache.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <!-- ============ T09 ============ -->
+  <article class="cas" id="t09">
+    <div class="cas-tete"><span class="cas-code">T09</span><h2>Consultation de la bande passante</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Scrum Master, Tech Lead, Développeur, Observateur</dd>
+      <dt>Objectif</dt><dd>Répondre à la question « qui peut prendre un sujet de plus, et qui est déjà au-delà ? », porteur par porteur et semaine par semaine.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>L'utilisateur est connecté et son rôle autorise la consultation du tableau de bord.</li>
+      <li>Un sprint de son périmètre comporte au moins une semaine.</li>
+      <li>Les objectifs de la semaine ont été saisis.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>Le disponible, l'engagé, le consommé et le restant s'affichent pour chaque porteur.</li>
+      <li>Un état de charge qualifie chaque porteur : disponible, partielle, chargée ou surchargée.</li>
+      <li>Aucune donnée d'une autre squad n'est présentée, sauf vision transverse.</li>
+      <li>Aucune écriture n'a été produite : la consultation est sans effet.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Scrum Master</td><td>Il ouvre le tableau de bord.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Scrum Master</td><td>Il sélectionne la semaine à examiner.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Système</td><td>Le système calcule, pour chaque porteur, ses jours disponibles et sa capacité nette.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Système</td><td>Le système agrège les heures engagées, les heures consommées et les rallonges accordées.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Système</td><td>Le système en déduit le restant et l'état de charge de chacun.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Scrum Master</td><td>Il identifie les porteurs disponibles et ceux en dépassement.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Scrum Master</td><td>Il arbitre : nouvelle affectation, rallonge ou report.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE34</td><td>Aucun sprint configuré</td><td>Message de démarrage ; le lien de création n'apparaît qu'aux rôles habilités.</td></tr>
+        <tr><td class="code">SE35</td><td>Utilisateur sans squad</td><td>Aucune donnée de squad n'est présentée, sans message d'erreur technique.</td></tr>
+        <tr><td class="code">SE36</td><td>Demande d'une semaine d'une autre squad par son identifiant</td><td>Refus : la semaine est hors périmètre.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG32</td><td>Le restant d'un porteur vaut : capacité + rallonges accordées − le plus élevé de l'engagé et du consommé.</td></tr>
+        <tr><td class="code">RG33</td><td>Hors vision transverse, toute lecture et toute écriture se bornent à la squad de l'utilisateur.</td></tr>
+        <tr><td class="code">RG34</td><td>La consultation ne produit aucune écriture métier.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <!-- ============ T10 ============ -->
+  <article class="cas" id="t10">
+    <div class="cas-tete"><span class="cas-code">T10</span><h2>Validation des prérequis du sprint</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Scrum Master ou Tech Lead</dd>
+      <dt>Objectif</dt><dd>Attester que les documents exigés avant le lancement du sprint — spécifications détaillées et cahier des tests — sont disponibles, condition d'accès de tout ticket à l'instance DAB.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>Un sprint de la squad est ouvert.</li>
+      <li>L'utilisateur dispose du droit de cocher et de valider une checklist.</li>
+      <li>Le référentiel documentaire est amorcé.</li>
+      <li>Les documents attendus ont été produits par l'équipe.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>Les checklists SDD et Cahier des tests portent le statut Validé.</li>
+      <li>Chaque validation est signée et horodatée au nom de son auteur.</li>
+      <li>Les cases d'une checklist validée ne sont plus modifiables.</li>
+      <li>Les tickets du sprint peuvent accéder à l'instance DAB.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Scrum Master</td><td>Il ouvre l'écran Réunion de validation.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Système</td><td>Le système présente les prérequis du sprint et leurs items issus du référentiel.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Scrum Master</td><td>Il coche chaque document disponible et commente ceux qui appellent une précision.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Système</td><td>Le système enregistre chaque coche avec son auteur et son horodatage.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Scrum Master</td><td>Une fois tous les items cochés, il valide la checklist.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Système</td><td>Le système vérifie l'exhaustivité, appose la signature et fige les cases.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Scrum Master</td><td>Il répète l'opération pour le cahier des tests.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE37</td><td>Validation demandée avec un item non coché</td><td>Refus : tous les items doivent être cochés au préalable.</td></tr>
+        <tr><td class="code">SE38</td><td>Tentative de modifier une case d'une checklist validée</td><td>Refus : la checklist doit d'abord être rouverte par un rôle habilité.</td></tr>
+        <tr><td class="code">SE39</td><td>Utilisateur sans droit de validation</td><td>Les commandes de validation ne lui sont pas présentées, et toute tentative est refusée par le serveur.</td></tr>
+        <tr><td class="code">SE40</td><td>Sprint d'une autre squad</td><td>Refus : hors périmètre.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG35</td><td>Une checklist ne se valide qu'une fois tous ses items cochés.</td></tr>
+        <tr><td class="code">RG36</td><td>Une validation est nominative et horodatée.</td></tr>
+        <tr><td class="code">RG37</td><td>Les items d'une checklist sont recopiés du référentiel à sa création : une évolution ultérieure du référentiel ne modifie pas les checklists déjà ouvertes.</td></tr>
+        <tr><td class="code">RG38</td><td>Les prérequis SDD et Cahier des tests s'apprécient au niveau du sprint, non du ticket.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <!-- ============ T11 ============ -->
+  <article class="cas" id="t11">
+    <div class="cas-tete"><span class="cas-code">T11</span><h2>Validation d'une instance DAB ou CAB</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Scrum Master ou Tech Lead</dd>
+      <dt>Objectif</dt><dd>Constituer et attester le dossier documentaire exigé avant chaque comité — DAB, CAB ACL puis CAB Go Live — et interdire au ticket de franchir l'étape tant que le dossier n'est pas complet.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>Le ticket existe comme objectif d'une semaine du sprint.</li>
+      <li>Les prérequis du sprint sont validés pour un passage en DAB.</li>
+      <li>L'utilisateur dispose du droit de cocher et de valider.</li>
+      <li>Les documents exigés par l'instance visée ont été produits.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>La checklist de l'instance porte le statut Validé, signée et horodatée.</li>
+      <li>Le ticket peut prendre le statut d'exécution correspondant.</li>
+      <li>Le suivi des checklists présente le ticket et son avancement documentaire.</li>
+      <li>Un badge d'avancement apparaît au tableau public.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Tech Lead</td><td>Il ouvre la réunion de validation et déplie la checklist du ticket concerné.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Système</td><td>Le système présente les checklists DAB, CAB ACL et CAB Go Live du ticket, avec leurs items.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Tech Lead</td><td>Il coche les documents de l'instance visée : document technique, schémas d'architecture, ticket SWAN, checklist sécurité, mode opératoire, plan de retour arrière.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Système</td><td>Le système enregistre chaque coche avec son auteur et son horodatage.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Tech Lead</td><td>Il valide la checklist une fois le dossier complet.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Tech Lead</td><td>Il fait passer le ticket au statut d'exécution correspondant.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Système</td><td>Le système vérifie que la checklist prérequise est validée, puis accepte le changement de statut.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE41</td><td>Passage en DAB demandé alors que SDD ou Cahier des tests n'est pas validé</td><td>Refus : la checklist manquante est nommée, ainsi que le rôle habilité à la valider.</td></tr>
+        <tr><td class="code">SE42</td><td>Passage en CAB ACL demandé sans DAB validé sur le ticket</td><td>Refus, la checklist manquante est nommée.</td></tr>
+        <tr><td class="code">SE43</td><td>Passage en Go Live demandé sans CAB ACL validé</td><td>Refus, la checklist manquante est nommée.</td></tr>
+        <tr><td class="code">SE44</td><td>Réouverture d'une checklist validée</td><td>Opération réservée aux rôles habilités ; la signature est levée et les cases redeviennent modifiables.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG39</td><td>La chaîne de validation est séquentielle : Passage en DAB exige SDD et Cahier des tests ; CAB ACL exige DAB ; CAB Go Live exige CAB ACL ; Live exige CAB Go Live.</td></tr>
+        <tr><td class="code">RG40</td><td>Les prérequis SDD et Cahier des tests s'apprécient au niveau du sprint ; DAB, CAB ACL et CAB Go Live au niveau du ticket.</td></tr>
+        <tr><td class="code">RG41</td><td>Un ticket entre au suivi documentaire dès qu'une checklist est ouverte pour lui, quel que soit son statut d'exécution.</td></tr>
+        <tr><td class="code">RG42</td><td>Les états d'exception — Incident, Bloqué — ne valent pas avancement dans la chaîne de validation.</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="note alerte">
+      <span class="note-titre">Point non tranché — bloquant</span>
+      <p>
+        La règle RG39 n'est aujourd'hui appliquée qu'au changement de statut, pas à la
+        validation de la checklist elle-même. Une checklist Go Live peut donc être validée
+        sans que DAB et CAB ACL l'aient été. La fermeture de la chaîne à la validation
+        reste à arbitrer et à développer.
+      </p>
+      <p>
+        Le document <em>Checklist Factory</em> prévoit par ailleurs trois signatures —
+        Scrum Master, Lead technique et Product Owner. La plateforme n'en enregistre
+        qu'une, et le rôle Product Owner n'existe pas encore.
+      </p>
+    </div>
+  </article>
+
+  <!-- ============ T12 ============ -->
+  <article class="cas" id="t12">
+    <div class="cas-tete"><span class="cas-code">T12</span><h2>Réunion de validation du vendredi</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Tech Lead ou Scrum Master</dd>
+      <dt>Objectif</dt><dd>Tenir le point hebdomadaire : consigner les heures réellement consommées, ajuster le statut d'exécution de chaque objectif et attester ceux qui sont atteints.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>L'utilisateur dispose du droit de validation des objectifs.</li>
+      <li>Une semaine du sprint est en cours ou vient de s'achever.</li>
+      <li>Des objectifs ont été saisis sur cette semaine.</li>
+      <li>Les porteurs ont communiqué leur avancement.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>Les heures réelles sont consignées pour chaque objectif examiné.</li>
+      <li>Les statuts d'exécution reflètent l'avancement constaté.</li>
+      <li>Les objectifs atteints portent la mention validé.</li>
+      <li>Les changements de statut sont tracés avec leur auteur et leur date.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Tech Lead</td><td>Il ouvre l'écran Réunion de validation et sélectionne la semaine.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Système</td><td>Le système affiche les objectifs de la semaine, porteur par porteur, avec capacité et réel.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Tech Lead</td><td>Pour chaque objectif, il saisit les heures réellement consommées.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Tech Lead</td><td>Il ajuste le statut d'exécution selon l'avancement constaté.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Système</td><td>Le système contrôle les prérequis documentaires du statut demandé et trace le changement.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Tech Lead</td><td>Il coche les objectifs atteints.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Tech Lead</td><td>Il examine les demandes de rallonge des objectifs non tenus.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE45</td><td>Utilisateur sans droit de validation</td><td>L'écran ne lui est pas servi : il est redirigé vers le tableau de bord.</td></tr>
+        <tr><td class="code">SE46</td><td>Statut demandé dont les prérequis documentaires manquent</td><td>Refus ; le statut affiché revient à sa valeur antérieure et la checklist manquante est nommée.</td></tr>
+        <tr><td class="code">SE47</td><td>Aucune semaine disponible</td><td>Message informatif, sans erreur technique.</td></tr>
+        <tr><td class="code">SE48</td><td>Heures réelles supérieures à la capacité du porteur</td><td>Enregistrement accepté et signalé : le constaté n'est jamais refusé, il est rendu visible.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG43</td><td>Le point de validation se tient le vendredi, dernier jour ouvré de la semaine de revue.</td></tr>
+        <tr><td class="code">RG44</td><td>Les heures réellement consommées sont consignées telles qu'elles sont constatées, même en dépassement : le contrôle de capacité porte sur le prévisionnel, jamais sur le réalisé.</td></tr>
+        <tr><td class="code">RG45</td><td>Tout changement de statut d'exécution est tracé avec son auteur, son ancien et son nouveau statut, et sa date.</td></tr>
+        <tr><td class="code">RG46</td><td>Le porteur peut corriger ses propres heures et son propre statut ; la mention validé est réservée aux rôles habilités.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <!-- ============ T13 ============ -->
+  <article class="cas" id="t13">
+    <div class="cas-tete"><span class="cas-code">T13</span><h2>Demande et arbitrage d'une rallonge</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Développeur (demande) · Scrum Master ou Tech Lead (arbitrage)</dd>
+      <dt>Objectif</dt><dd>Formaliser le besoin d'heures supplémentaires ou de report d'un objectif non tenu, et en conserver la décision motivée.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>L'objectif existe et est porté par le demandeur.</li>
+      <li>L'objectif n'est pas terminé.</li>
+      <li>Le volume d'heures supplémentaires est estimé.</li>
+      <li>Le motif du dépassement est explicable.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>La demande est enregistrée avec son volume, son motif et son demandeur.</li>
+      <li>Le décideur voit la demande à la réunion de validation.</li>
+      <li>La décision — accordée ou refusée — est enregistrée avec son auteur et sa date.</li>
+      <li>Une rallonge accordée augmente la bande passante du porteur sur la semaine.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Développeur</td><td>Il constate qu'un objectif ne tiendra pas dans les heures prévues.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Développeur</td><td>Il ouvre une demande de rallonge sur cet objectif.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Développeur</td><td>Il saisit le volume d'heures nécessaire et le motif.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Système</td><td>Le système vérifie que le demandeur porte bien l'objectif et enregistre la demande.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Scrum Master</td><td>Il examine la demande lors de la réunion de validation.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Scrum Master</td><td>Il accorde ou refuse, en motivant sa réponse.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Système</td><td>Le système enregistre la décision et, si elle est favorable, l'impute sur la bande passante du porteur.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE49</td><td>Demande sur un objectif porté par un autre collaborateur</td><td>Refus.</td></tr>
+        <tr><td class="code">SE50</td><td>Demande sur un objectif déjà terminé</td><td>Refus : un point livré n'ouvre pas de rallonge.</td></tr>
+        <tr><td class="code">SE51</td><td>Arbitrage tenté par un rôle sans droit de décision</td><td>Refus : la décision relève du pilotage de la squad.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG47</td><td>Une rallonge est demandée par le porteur de l'objectif et décidée par un rôle qui pilote la squad.</td></tr>
+        <tr><td class="code">RG48</td><td>Seules les rallonges accordées entrent dans la bande passante ; une demande en attente reste sans effet.</td></tr>
+        <tr><td class="code">RG49</td><td>Un objectif terminé n'ouvre pas de rallonge.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <!-- ============ T14 ============ -->
+  <article class="cas" id="t14">
+    <div class="cas-tete"><span class="cas-code">T14</span><h2>Clôture d'une semaine et d'un sprint</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Tech Lead ou Scrum Master</dd>
+      <dt>Objectif</dt><dd>Arrêter les chiffres d'une semaine puis d'un sprint, de sorte que les données servant au rapport et à la rétrospective ne bougent plus.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>L'utilisateur dispose du droit de clôture.</li>
+      <li>La réunion de validation de la semaine s'est tenue.</li>
+      <li>Les heures réelles et les statuts sont à jour.</li>
+      <li>Les demandes de rallonge de la semaine ont été arbitrées.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>La semaine est clôturée et la saisie y est fermée aux porteurs.</li>
+      <li>Les chiffres de la semaine sont figés pour le rapport et la tendance.</li>
+      <li>Une fois toutes les semaines clôturées, le sprint peut l'être à son tour.</li>
+      <li>La rétrospective du sprint devient accessible.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Tech Lead</td><td>Il vérifie que tous les objectifs de la semaine ont été examinés.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Tech Lead</td><td>Il déclenche la clôture de la semaine.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Système</td><td>Le système contrôle le droit de clôture et le périmètre.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Système</td><td>Le système marque la semaine close et ferme la saisie aux porteurs.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Scrum Master</td><td>À la dernière semaine, il déclenche la clôture du sprint.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Système</td><td>Le système marque le sprint clos et ouvre l'accès à sa rétrospective.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Scrum Master</td><td>Il édite le rapport de clôture destiné au comité.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE52</td><td>Saisie tentée sur une semaine clôturée</td><td>Refus, sauf pour les rôles qui pilotent la squad.</td></tr>
+        <tr><td class="code">SE53</td><td>Suppression d'un sprint portant des saisies</td><td>Refus : le sprint se clôture, il ne se supprime pas. La suppression forcée est réservée au super admin.</td></tr>
+        <tr><td class="code">SE54</td><td>Clôture tentée sur un sprint d'une autre squad</td><td>Refus : hors périmètre.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG50</td><td>La clôture d'une semaine ferme la saisie aux porteurs ; les rôles qui pilotent la squad conservent la main pour corriger.</td></tr>
+        <tr><td class="code">RG51</td><td>Un sprint portant des saisies ne se supprime pas : il se clôture. Seul le super admin peut forcer la suppression.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <!-- ============ T15 ============ -->
+  <article class="cas" id="t15">
+    <div class="cas-tete"><span class="cas-code">T15</span><h2>Rétrospective de sprint</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Scrum Master ou Tech Lead</dd>
+      <dt>Objectif</dt><dd>Consigner le bilan du sprint, ce qui a fonctionné, ce qui n'a pas fonctionné et les améliorations retenues, à partir d'un bilan chiffré calculé automatiquement.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>Le sprint est clôturé.</li>
+      <li>L'utilisateur dispose du droit de clôture, qui ouvre l'écriture de la rétrospective.</li>
+      <li>Les heures réelles et les statuts ont été consignés.</li>
+      <li>La séance de rétrospective s'est tenue avec l'équipe.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>Le bilan, les points forts, les points faibles et les améliorations sont enregistrés.</li>
+      <li>L'animateur de la rétrospective est identifié.</li>
+      <li>Le bilan chiffré calculé accompagne le commentaire rédigé.</li>
+      <li>La rétrospective est consultable par les membres de la squad.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Scrum Master</td><td>Il ouvre la rétrospective du sprint clôturé.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Système</td><td>Le système calcule le bilan chiffré : objectifs validés, capacité consommée, sujets bloqués.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Scrum Master</td><td>Il rédige le bilan du sprint au regard de ces chiffres.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Scrum Master</td><td>Il consigne les points forts relevés en séance.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Scrum Master</td><td>Il consigne les points faibles et les difficultés rencontrées.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Scrum Master</td><td>Il note les améliorations retenues pour le sprint suivant.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Système</td><td>Le système enregistre chaque section et l'attribue à son auteur.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE55</td><td>Utilisateur sans droit d'écriture</td><td>La rétrospective s'affiche en lecture seule, sans commande d'édition.</td></tr>
+        <tr><td class="code">SE56</td><td>Sprint d'une autre squad</td><td>Refus : hors périmètre.</td></tr>
+        <tr><td class="code">SE57</td><td>Bilan chiffré non calculable</td><td>Les sections rédigées restent accessibles ; seul le bilan chiffré est omis.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG52</td><td>L'écriture de la rétrospective est réservée aux rôles qui clôturent une semaine ; la lecture est ouverte à toute la squad.</td></tr>
+        <tr><td class="code">RG53</td><td>L'animateur enregistré est l'auteur de l'écriture, jamais une valeur transmise par le poste client.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <!-- ============ T16 ============ -->
+  <article class="cas" id="t16">
+    <div class="cas-tete"><span class="cas-code">T16</span><h2>Restitution et tableau public</h2></div>
+    <dl class="fiche">
+      <dt>Acteur principal</dt><dd>Scrum Master, Observateur, partie prenante externe</dd>
+      <dt>Objectif</dt><dd>Rendre compte de l'avancement : rapport imprimable, export CSV, présentation PowerPoint, et tableau consultable sans authentification.</dd>
+    </dl>
+
+    <h3>Préconditions</h3>
+    <ul>
+      <li>Un sprint comporte au moins une semaine renseignée.</li>
+      <li>Pour le rapport et l'export, l'utilisateur est connecté et son rôle autorise l'export.</li>
+      <li>Pour le tableau public, aucune condition : l'accès est libre.</li>
+      <li>Les heures réelles ont été consignées lors de la réunion de validation.</li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+      <li>Le rapport de la semaine s'affiche, prêt à imprimer ou à enregistrer en PDF.</li>
+      <li>L'export CSV est téléchargé, restreint au périmètre de l'utilisateur.</li>
+      <li>Le tableau public présente l'avancement sans donnée nominative sensible.</li>
+      <li>Aucune donnée d'une autre squad n'a été divulguée.</li>
+    </ul>
+
+    <h3>Scénario nominal</h3>
+    <div class="cadre"><table>
+      <thead><tr><th class="etape">Étape</th><th class="acteur">Acteur</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td class="etape">1</td><td class="acteur">Scrum Master</td><td>Il ouvre le rapport de la semaine à restituer.</td></tr>
+        <tr><td class="etape">2</td><td class="acteur">Système</td><td>Le système vérifie que la semaine relève de son périmètre.</td></tr>
+        <tr><td class="etape">3</td><td class="acteur">Système</td><td>Le système compose le rapport : objectifs, capacité prévue et consommée, tendance, bilan par porteur.</td></tr>
+        <tr><td class="etape">4</td><td class="acteur">Scrum Master</td><td>Il imprime ou enregistre le rapport au format PDF.</td></tr>
+        <tr><td class="etape">5</td><td class="acteur">Scrum Master</td><td>Il télécharge l'export CSV pour un retraitement.</td></tr>
+        <tr><td class="etape">6</td><td class="acteur">Partie prenante</td><td>Elle consulte le tableau public sans avoir à s'identifier.</td></tr>
+        <tr><td class="etape">7</td><td class="acteur">Système</td><td>Le système présente l'avancement de la semaine en cours par squad, avec les badges documentaires.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Scénarios d'exception</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Exception</th><th>Résultat</th></tr></thead>
+      <tbody>
+        <tr><td class="code">SE58</td><td>Export d'une semaine d'une autre squad par son identifiant</td><td>Refus : la semaine est hors périmètre.</td></tr>
+        <tr><td class="code">SE59</td><td>Aucune semaine à restituer</td><td>Message informatif, sans erreur technique.</td></tr>
+        <tr><td class="code">SE60</td><td>Donnée secondaire indisponible pour le tableau public</td><td>Le tableau s'affiche sans cette donnée plutôt que de tomber en erreur.</td></tr>
+        <tr><td class="code">SE61</td><td>Aucune semaine en cours</td><td>Le tableau public présente la semaine la plus récente de chaque squad.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Règles de gestion</h3>
+    <div class="cadre"><table>
+      <thead><tr><th style="width:70px">Code</th><th>Règle de gestion</th></tr></thead>
+      <tbody>
+        <tr><td class="code">RG54</td><td>Le tableau public est la seule surface accessible sans authentification. Il ne présente ni adresse, ni commentaire, ni donnée d'administration.</td></tr>
+        <tr><td class="code">RG55</td><td>Une surface publique se dégrade plutôt qu'elle ne tombe : l'indisponibilité d'une donnée secondaire n'interrompt pas l'affichage.</td></tr>
+        <tr><td class="code">RG56</td><td>L'export est borné au périmètre de l'utilisateur, quel que soit l'identifiant demandé.</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <!-- ============ Récapitulatif ============ -->
+  <section id="rg">
+    <h2>Récapitulatif des règles de gestion</h2>
+    <p class="chapeau">
+      Cinquante-six règles, numérotées en continu et rattachées à leur cas d'usage.
+      Chacune est vérifiable : elle décrit un comportement que le système applique
+      ou refuse, jamais une intention.
+    </p>
+    <div class="cadre">
+      <table>
+        <thead>
+          <tr><th style="width:110px">Domaine</th><th style="width:120px">Règles</th><th>Objet</th><th style="width:70px" class="num">Cas</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Accès</td><td class="code">RG1 – RG4</td><td>Session, hachage des mots de passe, révocation, compte désactivé</td><td class="num">T01</td></tr>
+          <tr><td>Squad</td><td class="code">RG5 – RG7</td><td>Unicité, recalcul déclenché, rôles concernés par le daily</td><td class="num">T02</td></tr>
+          <tr><td>Rôles</td><td class="code">RG8 – RG13</td><td>Le rôle porte le droit, délégation, dernier administrateur, redirection</td><td class="num">T03</td></tr>
+          <tr><td>Capacité</td><td class="code">RG14 – RG18</td><td>Formule, rôles producteurs, calcul non saisissable, semaine de revue</td><td class="num">T04</td></tr>
+          <tr><td>Calendrier</td><td class="code">RG19 – RG21</td><td>Portée des fériés, non-cumul, daily sur jours travaillés</td><td class="num">T05</td></tr>
+          <tr><td>Portefeuille</td><td class="code">RG22 – RG26</td><td>Enveloppe unique, ticket Perfit, porteurs multiples, engagement, exclusions visibles</td><td class="num">T06</td></tr>
+          <tr><td>Planification</td><td class="code">RG27 – RG31</td><td>Heures de la semaine, borne de capacité, clôture, affectation</td><td class="num">T07–T08</td></tr>
+          <tr><td>Bande passante</td><td class="code">RG32 – RG34</td><td>Calcul du restant, périmètre de squad, consultation sans écriture</td><td class="num">T09</td></tr>
+          <tr><td>Checklists</td><td class="code">RG35 – RG42</td><td>Exhaustivité, signature, référentiel figé, chaîne séquentielle, états d'exception</td><td class="num">T10–T11</td></tr>
+          <tr><td>Validation</td><td class="code">RG43 – RG46</td><td>Point du vendredi, réel constaté, traçabilité, droits du porteur</td><td class="num">T12</td></tr>
+          <tr><td>Rallonges</td><td class="code">RG47 – RG49</td><td>Demandeur et décideur, effet des seules rallonges accordées</td><td class="num">T13</td></tr>
+          <tr><td>Clôture</td><td class="code">RG50 – RG53</td><td>Fermeture de la saisie, non-suppression, écriture de la rétrospective</td><td class="num">T14–T15</td></tr>
+          <tr><td>Restitution</td><td class="code">RG54 – RG56</td><td>Surface publique, dégradation, périmètre de l'export</td><td class="num">T16</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Points restant à trancher</h3>
+    <div class="cadre">
+      <table>
+        <thead><tr><th style="width:70px">Cas</th><th>Question ouverte</th><th style="width:120px">Impact</th></tr></thead>
+        <tbody>
+          <tr><td class="code">T11</td><td>Fermeture de la chaîne de validation à la validation de la checklist elle-même, et non au seul changement de statut</td><td><span class="pastille p-att">Bloquant</span></td></tr>
+          <tr><td class="code">T11</td><td>Trois signatures exigées par la Checklist Factory — dont le Product Owner, rôle inexistant à ce jour</td><td><span class="pastille p-att">Bloquant</span></td></tr>
+          <tr><td class="code">T11</td><td>Dépôt du dossier signé sur Documenso : PDF imprimable ou transmission par interface ?</td><td>À arbitrer</td></tr>
+          <tr><td class="code">T06</td><td>Report des heures qui ne tiennent pas dans le sprint — 120 h sur CXRecov, 4 h sur Compteur de clic</td><td>À arbitrer</td></tr>
+          <tr><td class="code">T06</td><td>Numéros de ticket Perfit provisoires sur Incident Thank You Board et GTR Flow</td><td>À corriger</td></tr>
+          <tr><td class="code">T01</td><td>Bascule vers Keycloak : instance cible, compte de secours, source du rattachement à la squad</td><td>À arbitrer</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ Signatures ============ -->
+  <section id="sign">
+    <h2>Validation et signatures</h2>
+    <p class="chapeau">
+      Ce document doit être validé et signé par les parties concernées avant tout
+      démarrage des travaux.
+    </p>
+    <div class="cadre">
+      <table>
+        <thead>
+          <tr><th style="width:270px">Rôle / Fonction</th><th>Nom &amp; Prénom</th><th style="width:210px">Signature &amp; Date</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Rédacteur</strong><br><span style="color:var(--encre-3)">Chef de projet / Analyste</span></td>
+            <td>Emmanuel FOKA</td>
+            <td><span class="signature-ligne"></span>Date : ___ / ___ / ______</td>
+          </tr>
+          <tr>
+            <td><strong>Responsable métier</strong><br><span style="color:var(--encre-3)">Product Owner / MOA</span></td>
+            <td><span class="signature-ligne"></span></td>
+            <td><span class="signature-ligne"></span>Date : ___ / ___ / ______</td>
+          </tr>
+          <tr>
+            <td><strong>Responsable technique</strong><br><span style="color:var(--encre-3)">Lead Dev / Architecte / MOE</span></td>
+            <td><span class="signature-ligne"></span></td>
+            <td><span class="signature-ligne"></span>Date : ___ / ___ / ______</td>
+          </tr>
+          <tr>
+            <td><strong>Validation hiérarchique</strong><br><span style="color:var(--encre-3)">Directeur / Manager N+1</span></td>
+            <td><span class="signature-ligne"></span></td>
+            <td><span class="signature-ligne"></span>Date : ___ / ___ / ______</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="color:var(--encre-3);font-size:13px;border-top:1px solid var(--filet);padding-top:16px;margin-top:32px">
+      Toute modification après signature doit faire l'objet d'un avenant validé par les
+      mêmes signataires. — Document confidentiel
+    </p>
+  </section>
+
+</div>
