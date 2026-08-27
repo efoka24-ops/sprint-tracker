@@ -7,6 +7,7 @@ import Calendrier from './Calendrier';
 import BaseDeDonnees from './BaseDeDonnees';
 import Objectifs from './Objectifs';
 import Checklists from './Checklists';
+import Projets from './Projets';
 
 const DANS = (n) => {
   const d = new Date();
@@ -24,6 +25,7 @@ const ONGLETS = [
   { cle: 'squads', label: 'Squads' },
   { cle: 'comptes', label: 'Comptes' },
   { cle: 'sprints', label: 'Sprints' },
+  { cle: 'projets', label: 'Projets' },
   { cle: 'objectifs', label: 'Objectifs' },
   { cle: 'calendrier', label: 'Calendrier' },
   { cle: 'checklists', label: 'Checklists' },
@@ -644,6 +646,13 @@ export default function ConsoleAdmin({
         </div>
       )}
       </>}
+
+      {onglet === 'projets' && (
+        <Projets
+          membres={comptes.filter((c) => c.actif && c.role !== 'OBSERVATEUR').map((c) => ({ id: c.id, nom: c.nom }))}
+          capaciteSprint={sprints.find((s) => !s.cloture)?.capaciteTotale ?? 0}
+        />
+      )}
 
       {onglet === 'checklists' && <Checklists peutGerer={moi.peutGererChecklist} />}
 

@@ -15,6 +15,7 @@ model Squad {
   rolesDaily    String        @default("TECH_LEAD,DEVELOPPEUR") // roles auxquels le daily est deduit
   membres       Developpeur[]
   sprints       Sprint[]
+  projets       Projet[]
   feries        JourFerie[]
   createdAt     DateTime      @default(now())
 }
@@ -57,7 +58,46 @@ model Developpeur {
   squadId        String?
   entrees        Entree[]
   conges         Conge[]
+  projetsPortes  ProjetPorteur[]
   createdAt      DateTime @default(now())
+}
+
+/**
+ * Projet issu de la faisabilite : porte l'enveloppe estimee (heures et story
+ * points) une seule fois, la ou les lignes hebdomadaires ne portent que ce qui
+ * est prevu pour LEUR semaine. Un projet vit au-dela d'un sprint.
+ * Un projet BLOQUE ne compte pas dans l'engagement de la squad.
+ */
+model Projet {
+  id                String   @id @default(cuid())
+  ticket            String                        // "#9322"
+  idPerfit          String?                       // reference Perfit du projet
+  libelle           String                        // "CXRecov"
+  heuresFaisabilite Float    @default(0)          // enveloppe estimee en faisabilite
+  storyPoints       Int      @default(0)
+  statut            String   @default("ACTIF")    // ACTIF | BLOQUE | TERMINE
+  squad             Squad?   @relation(fields: [squadId], references: [id])
+  squadId           String?
+  porteurs          ProjetPorteur[]
+  entrees           Entree[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([squadId, ticket])
+  @@index([statut])
+}
+
+/** Porteur d'un projet : CXRecov est porte par Alexandre ET Yan. */
+model ProjetPorteur {
+  id            String      @id @default(cuid())
+  projet        Projet      @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  projetId      String
+  developpeur   Developpeur @relation(fields: [developpeurId], references: [id], onDelete: Cascade)
+  developpeurId String
+  createdAt     DateTime    @default(now())
+
+  @@unique([projetId, developpeurId])
+  @@index([developpeurId])
 }
 
 model Sprint {
@@ -116,7 +156,9 @@ model Entree {
   developpeurId String
   ticket        String                       // "#9673"
   idPerfit      String?                      // identifiant Perfit (référentiel Orange)
-  projet        String                       // "HLR Manager"
+  projet        String                       // "HLR Manager" (libelle libre, repris du Projet quand il est rattache)
+  projetRef     Projet?     @relation(fields: [projetId], references: [id])
+  projetId      String?
   objectif      String                       // objectif de la semaine
   capaciteH     Float       @default(0)
   reelH         Float?
