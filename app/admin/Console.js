@@ -8,6 +8,7 @@ import BaseDeDonnees from './BaseDeDonnees';
 import Objectifs from './Objectifs';
 import Checklists from './Checklists';
 import Projets from './Projets';
+import Backlog from './Backlog';
 
 const DANS = (n) => {
   const d = new Date();
@@ -26,6 +27,7 @@ const ONGLETS = [
   { cle: 'comptes', label: 'Comptes' },
   { cle: 'sprints', label: 'Sprints' },
   { cle: 'projets', label: 'Projets' },
+  { cle: 'backlog', label: 'Backlog' },
   { cle: 'objectifs', label: 'Objectifs' },
   { cle: 'calendrier', label: 'Calendrier' },
   { cle: 'checklists', label: 'Checklists' },
@@ -651,6 +653,12 @@ export default function ConsoleAdmin({
         <Projets
           membres={comptes.filter((c) => c.actif && c.role !== 'OBSERVATEUR').map((c) => ({ id: c.id, nom: c.nom }))}
           capaciteSprint={sprints.find((s) => !s.cloture)?.capaciteTotale ?? 0}
+        />
+      )}
+
+      {onglet === 'backlog' && (
+        <Backlog
+          membres={comptes.filter((c) => c.actif && c.role !== 'OBSERVATEUR').map((c) => ({ id: c.id, nom: c.nom }))}
         />
       )}
 

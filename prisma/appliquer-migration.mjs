@@ -17,9 +17,14 @@ async function main() {
   }
 
   const sql = readFileSync(new URL(`./migrations/${fichier}`, import.meta.url), 'utf8');
+  // Les commentaires sont retirés AVANT le découpage : un « ; » dans un
+  // commentaire couperait sinon la phrase en deux instructions invalides.
   const instructions = sql
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('--'))
+    .join('\n')
     .split(';')
-    .map((bloc) => bloc.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n').trim())
+    .map((bloc) => bloc.trim())
     .filter(Boolean);
 
   console.log(`${fichier} : ${instructions.length} instruction(s)`);

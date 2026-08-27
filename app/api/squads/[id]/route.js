@@ -40,9 +40,9 @@ export async function PATCH(req, { params }) {
 
   if (b.minutesDaily !== undefined) {
     const m = Number(b.minutesDaily);
-    // Un daily qui mangerait la journée entière n'a pas de sens : on borne à 4 h.
-    if (!Number.isInteger(m) || m < 0 || m > 240) {
-      return NextResponse.json({ error: 'Durée de daily invalide (0 à 240 minutes)' }, { status: 400 });
+    // Un daily est une cérémonie courte : 30 minutes est le plafond convenu.
+    if (!Number.isInteger(m) || m < 0 || m > 30) {
+      return NextResponse.json({ error: 'Durée de daily invalide (0 à 30 minutes)' }, { status: 400 });
     }
     data.minutesDaily = m;
   }

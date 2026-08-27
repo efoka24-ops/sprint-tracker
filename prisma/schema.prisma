@@ -59,6 +59,7 @@ model Developpeur {
   entrees        Entree[]
   conges         Conge[]
   projetsPortes  ProjetPorteur[]
+  userStories    UserStory[]
   createdAt      DateTime @default(now())
 }
 
@@ -78,12 +79,44 @@ model Projet {
   squad             Squad?   @relation(fields: [squadId], references: [id])
   squadId           String?
   porteurs          ProjetPorteur[]
+  userStories       UserStory[]
   entrees           Entree[]
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   @@unique([squadId, ticket])
   @@index([statut])
+}
+
+/**
+ * User story : maille de pilotage du projet. Elle porte l'estimation en heures,
+ * d'ou les story points se DEDUISENT par le bareme (lib/storypoints.js) : ils ne
+ * se saisissent jamais. Les totaux d'un projet sont la somme de ses US.
+ *
+ * Deux axes distincts : `etatBacklog` dit si l'item est pret a etre embarque,
+ * `statut` dit ou il en est une fois embarque dans un sprint.
+ */
+model UserStory {
+  id             String       @id @default(cuid())
+  reference      String                          // ticket Perfit ou code US
+  titre          String
+  description    String?
+  projet         Projet       @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  projetId       String
+  porteur        Developpeur? @relation(fields: [porteurId], references: [id])
+  porteurId      String?
+  priorite       String       @default("MOYENNE") // HAUTE | MOYENNE | BASSE
+  heuresEstimees Float        @default(0)
+  storyPoints    Int          @default(0)         // derive du bareme, jamais saisi
+  etatBacklog    String       @default("NOUVEAU") // NOUVEAU | A_AFFINER | AFFINE | PRET
+  statut         String       @default("A_FAIRE") // A_FAIRE | EN_COURS | EN_TEST | TERMINE | BLOQUE
+  sprintId       String?                          // sprint dans lequel l'US est embarquee
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([projetId])
+  @@index([etatBacklog])
+  @@index([sprintId])
 }
 
 /** Porteur d'un projet : CXRecov est porte par Alexandre ET Yan. */
