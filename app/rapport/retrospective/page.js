@@ -1,372 +1,242 @@
-'use client'
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { prisma } from '@/lib/db';
+import { utilisateurCourant } from '@/lib/auth';
+import { peut } from '@/lib/roles';
+import { STATUTS } from '@/lib/constants';
+import { calculerBilan, constatsAutomatiques } from '@/lib/retrospective';
+import Shell from '@/components/Shell';
+import PointsSeance from './PointsSeance';
+import { IconeSucces, IconeAlerte, IconeFleche } from '@/components/Icones';
 
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useState, useEffect, Suspense } from 'react'
-import Statut from '@/components/Statut'
-import PointsSeance from './PointsSeance'
-import { peut } from '@/lib/roles'
+export const dynamic = 'force-dynamic';
 
-function RetrospectiveContenu() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const sprintId = searchParams.get('sprintId')
+const fmt = (d) => new Date(d).toLocaleDateString('fr-FR');
+const arrondi = (n) => Math.round(n * 10) / 10;
 
-  const [sprint, setSprint] = useState(null)
-  const [retrospective, setRetrospective] = useState(null)
-  const [bilanCalcule, setBilanCalcule] = useState('')
-  const [stats, setStats] = useState(null)
-  const [constats, setConstats] = useState({})
-  const [editingSection, setEditingSection] = useState(null) // 'bilan', 'pointsForts', 'pointsFaibles', 'ameliorations'
-  const [formData, setFormData] = useState({
-    bilan: '',
-    pointsForts: '',
-    pointsFaibles: '',
-    ameliorations: ''
-  })
-  const [loading, setLoading] = useState(true)
-  const [message, setMessage] = useState('')
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  // Le rôle porte le droit d'écriture : sans lui, la page reste en consultation.
-  const [peutEditer, setPeutEditer] = useState(false)
+/**
+ * Rétrospective de fin de sprint, sur le modèle « Template Application Sprint
+ * Tracker ». Les résultats sont groupés par PROJET et non par ligne : un projet
+ * porté par plusieurs personnes — CXRecov l'est par Yan et Alexandre — doit se
+ * lire d'un bloc, avec tous ses porteurs.
+ */
+export default async function RetrospectivePage({ searchParams }) {
+  const moi = await utilisateurCourant();
+  if (!moi) redirect('/connexion');
+  if (!peut(moi, 'dashboard.voir')) redirect('/');
 
-  useEffect(() => {
-    // Vérifier l'authentification
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth')
-        if (res.ok) {
-          const data = await res.json()
-          if (data.utilisateur) {
-            setIsAuthenticated(true)
-            setPeutEditer(peut(data.utilisateur, 'semaine.cloturer'))
-          } else {
-            router.push('/connexion')
-            return
-          }
-        } else {
-          router.push('/connexion')
-          return
-        }
-      } catch (err) {
-        console.error('Erreur authentification:', err)
-        router.push('/connexion')
-      }
-    }
-    
-    checkAuth()
-  }, [router])
+  const sp = await searchParams;
+  const sprintId = sp?.sprintId;
+  if (!sprintId) redirect('/sprints');
 
-  useEffect(() => {
-    if (!sprintId || !isAuthenticated) {
-      if (sprintId) setLoading(false)
-      return
-    }
+  const sprint = await prisma.sprint.findUnique({
+    where: { id: sprintId },
+    include: {
+      squad: { select: { id: true, nom: true } },
+      semaines: {
+        include: {
+          entrees: {
+            include: {
+              developpeur: { select: { id: true, nom: true } },
+              projetRef: {
+                include: { porteurs: { include: { developpeur: { select: { id: true, nom: true } } } } },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!sprint) redirect('/sprints');
+  if (!peut(moi, 'dashboard.tout') && sprint.squadId !== (moi.squadId ?? null)) redirect('/sprints');
 
-    const fetchData = async () => {
-      try {
-        // Récupérer le sprint
-        const sprintRes = await fetch(`/api/sprints/${sprintId}`)
-        if (!sprintRes.ok) {
-          if (sprintRes.status === 401) {
-            router.push('/connexion')
-            return
-          }
-          throw new Error('Sprint non trouvé')
-        }
-        const sprintData = await sprintRes.json()
-        setSprint(sprintData)
+  const [bilan, constats, retro] = await Promise.all([
+    calculerBilan(sprintId),
+    constatsAutomatiques(sprintId),
+    prisma.retrospective.findUnique({
+      where: { sprintId },
+      include: { points: { orderBy: { createdAt: 'asc' } } },
+    }),
+  ]);
+  const stats = bilan?.stats;
+  const peutEditer = peut(moi, 'semaine.cloturer');
 
-        // Récupérer la rétrospective
-        try {
-          const retroRes = await fetch(`/api/retrospectives?sprintId=${sprintId}`)
-          if (retroRes.ok) {
-            const retroData = await retroRes.json()
-            setRetrospective(retroData.retrospective)
-            setBilanCalcule(retroData.bilanCalcule || '')
-            setStats(retroData.stats || null)
-            setConstats(retroData.constats || {})
-            setFormData({
-              bilan: retroData.retrospective?.bilan || '',
-              pointsForts: retroData.retrospective?.pointsForts || '',
-              pointsFaibles: retroData.retrospective?.pointsFaibles || '',
-              ameliorations: retroData.retrospective?.ameliorations || ''
-            })
-          } else if (retroRes.status === 403) {
-            setMessage('Cette rétrospective n’est pas dans votre périmètre')
-          }
-          // Le GET renvoie déjà une rétrospective vide : rien à créer côté client.
-        } catch (err) {
-          console.error('Erreur lors de la récupération de la rétrospective', err)
-        }
-      } catch (err) {
-        console.error('Erreur:', err)
-        setMessage('Erreur lors du chargement du sprint')
-      } finally {
-        setLoading(false)
-      }
-    }
+  const entrees = sprint.semaines.flatMap((s) => s.entrees);
 
-    fetchData()
-  }, [sprintId, isAuthenticated, router])
-
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+  /* ---- Résultats groupés par projet, avec TOUS les porteurs du projet ---- */
+  const parProjet = new Map();
+  for (const e of entrees) {
+    const cle = e.projetRef?.id ?? `libre:${e.projet}`;
+    const acc = parProjet.get(cle) ?? {
+      ticket: e.projetRef?.ticket ?? `#${e.ticket}`,
+      libelle: e.projetRef?.libelle ?? e.projet,
+      // Porteurs déclarés sur le projet ; à défaut, ceux qui y ont travaillé.
+      porteurs: e.projetRef?.porteurs.map((p) => p.developpeur.nom) ?? [],
+      intervenants: new Set(),
+      cap: 0, reel: 0, sujets: 0, valides: 0, bloques: 0,
+    };
+    acc.intervenants.add(e.developpeur.nom);
+    acc.cap += e.capaciteH ?? 0;
+    acc.reel += e.reelH ?? 0;
+    acc.sujets += 1;
+    if (e.valide) acc.valides += 1;
+    if (e.execution === 'BLOQUE' || e.blocage) acc.bloques += 1;
+    parProjet.set(cle, acc);
   }
 
-  const handleSave = async (section) => {
-    try {
-      const res = await fetch('/api/retrospectives', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sprintId,
-          [section]: formData[section]
-        })
-      })
+  const resultats = [...parProjet.values()].map((p) => {
+    const noms = p.porteurs.length ? p.porteurs : [...p.intervenants];
+    const tout = p.valides === p.sujets;
+    return {
+      ...p,
+      noms,
+      etat: p.bloques ? 'Bloqué' : tout ? 'Atteint' : `${p.valides}/${p.sujets} atteints`,
+      couleur: p.bloques ? '#c0392b' : tout ? '#1f8a4c' : '#c2680a',
+      fond: p.bloques ? '#fdecea' : tout ? '#e7f6ed' : '#fff2e3',
+      Icone: p.bloques ? IconeAlerte : tout ? IconeSucces : IconeFleche,
+    };
+  }).sort((a, b) => b.reel - a.reel);
 
-      if (!res.ok) throw new Error('Erreur lors de la sauvegarde')
+  const apercu = [
+    { label: 'Période', valeur: `${fmt(sprint.dateDebut)} → ${fmt(sprint.dateFin)}` },
+    { label: 'Durée', valeur: `${sprint.nbSemaines} semaine${sprint.nbSemaines > 1 ? 's' : ''}` },
+    { label: 'Sujets engagés', valeur: `${stats.total} sujets · ${stats.engage} h engagées` },
+    { label: 'Capacité de l’équipe', valeur: `${stats.capacite} h` },
+    { label: 'Consommation réelle', valeur: `${stats.reel} h (${stats.tauxOccupation} %)` },
+    {
+      label: 'Statuts en fin de sprint',
+      valeur: `${stats.realises} validés · ${stats.enCours} en cours · ${stats.bloques} bloqués`,
+    },
+  ];
 
-      const data = await res.json()
-      setRetrospective(data)
-      setEditingSection(null)
-      setMessage(`${section} sauvegardé ✓`)
-      setTimeout(() => setMessage(''), 3000)
-    } catch (err) {
-      console.error('Erreur:', err)
-      setMessage('Erreur lors de la sauvegarde')
-    }
-  }
+  const aReporter = entrees.filter((e) => !e.valide);
+  const suites = aReporter.map((e) => ({
+    type: e.execution === 'BLOQUE' || e.blocage ? 'Blocage à lever' : 'Report sprint suivant',
+    owner: e.developpeur.nom,
+    action: `${e.ticket} ${e.projetRef?.libelle ?? e.projet} — ${e.objectif} `
+      + `(reste ${arrondi(Math.max(0, (e.capaciteH ?? 0) - (e.reelH ?? 0)))} h).`,
+  }));
 
-  const handleCancel = (section) => {
-    setFormData(prev => ({
-      ...prev,
-      [section]: retrospective?.[section] || ''
-    }))
-    setEditingSection(null)
-  }
-
-  const SectionEditable = ({ title, section, bgColor, titleColor, icon, placeholder }) => {
-    const isEditing = editingSection === section
-    const content = retrospective?.[section] || ''
-    const isEmpty = !content || content.trim() === ''
-
-    return (
-      <section style={{ marginBottom: '30px', padding: '16px', backgroundColor: bgColor, borderRadius: '4px', border: `1px solid ${titleColor}20` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ color: titleColor, margin: 0 }}>{icon} {title}</h2>
-          {!isEditing && peutEditer && (
-            <button
-              onClick={() => setEditingSection(section)}
-              style={{
-                padding: '6px 12px',
-                backgroundColor: titleColor,
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                fontSize: '12px'
-              }}
-            >
-              ✎ Éditer
-            </button>
-          )}
+  return (
+    <Shell utilisateur={moi} actif="/sprints">
+      <header className="entete">
+        <div>
+          <div className="entete-kicker">
+            {sprint.squad?.nom ?? 'Sans squad'} · {sprint.cloture ? 'Sprint clôturé' : 'Sprint en cours'}
+          </div>
+          <h1 className="entete-titre">Rétrospective de sprint</h1>
         </div>
+        <div className="entete-actions noprint">
+          <Link className="btn ghost" href="/sprints">Retour aux sprints</Link>
+        </div>
+      </header>
 
-        {isEditing ? (
-          <>
-            <textarea
-              name={section}
-              value={formData[section]}
-              onChange={handleChange}
-              placeholder={placeholder}
-              style={{
-                width: '100%',
-                minHeight: '100px',
-                padding: '8px',
-                marginTop: '12px',
-                marginBottom: '12px',
-                borderRadius: '4px',
-                border: `1px solid ${titleColor}`,
-                fontFamily: 'inherit'
-              }}
-            />
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => handleSave(section)}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: titleColor,
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontWeight: 'bold'
-                }}
-              >
-                ✓ Enregistrer
-              </button>
-              <button
-                onClick={() => handleCancel(section)}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#e5e7eb',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Annuler
-              </button>
+      <div className="contenu">
+        {/* ---- Bandeau de synthèse ---- */}
+        <div className="retro-tete">
+          <div style={{ minWidth: 260 }}>
+            <div className="retro-tete-kicker">Rétrospective générée automatiquement</div>
+            <div className="retro-tete-titre">{sprint.libelle} — bilan de fin de sprint</div>
+            <div className="retro-tete-note">
+              {fmt(sprint.dateDebut)} → {fmt(sprint.dateFin)} · mise à jour à chaque changement de statut
             </div>
-          </>
-        ) : (
-          <p style={{
-            whiteSpace: 'pre-wrap',
-            color: isEmpty ? '#999' : '#111',
-            marginTop: '12px',
-            lineHeight: '1.6'
-          }}>
-            {isEmpty ? 'À remplir' : content}
-          </p>
-        )}
-      </section>
-    )
-  }
-
-  if (loading) {
-    return <div className="p4">Chargement...</div>
-  }
-
-  if (!sprint) {
-    return <div className="p4">Sprint non trouvé</div>
-  }
-
-  if (!sprint.cloture) {
-    return (
-      <div className="p4">
-        <h1>Rétrospective - {sprint.libelle}</h1>
-        <p style={{ color: '#FF7900' }}>Ce sprint n'est pas encore clôturé. La rétrospective sera disponible après la clôture.</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="p4">
-      <div style={{ marginBottom: '20px' }}>
-        <button 
-          onClick={() => router.back()}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: '#f0f0f0',
-            border: '1px solid #ddd',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          ← Retour
-        </button>
-      </div>
-
-      <h1>Rétrospective du Sprint</h1>
-
-      {/* Aperçu du sprint */}
-      <section style={{ marginBottom: '30px', padding: '16px', backgroundColor: '#f9f9f9', borderRadius: '4px', border: '1px solid #eee' }}>
-        <h2>📊 Aperçu du Sprint</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
-          <div>
-            <strong>Sprint:</strong> {sprint.libelle}
           </div>
-          <div>
-            <strong>Période:</strong> {new Date(sprint.dateDebut).toLocaleDateString('fr-FR')} → {new Date(sprint.dateFin).toLocaleDateString('fr-FR')}
-          </div>
-          <div>
-            <strong>Durée:</strong> {sprint.nbSemaines} semaine{sprint.nbSemaines > 1 ? 's' : ''}
-          </div>
-          <div>
-            <strong>Statut:</strong> <Statut statut={sprint.cloture ? 'LIVRE' : 'VALIDE'} />
-          </div>
-          <div>
-            <strong>Capacité:</strong> {sprint.capaciteTotale}h
+          <div className="retro-stats">
+            <div>
+              <div className="retro-stat-v" style={{ color: '#FF7900' }}>{stats.tauxRealisation} %</div>
+              <div className="retro-stat-l">Objectifs atteints</div>
+            </div>
+            <div>
+              <div className="retro-stat-v" style={{ color: '#fff' }}>{stats.reel} h</div>
+              <div className="retro-stat-l">Consommé sur {stats.capacite} h</div>
+            </div>
+            <div>
+              <div className="retro-stat-v" style={{ color: aReporter.length ? '#FF9C4A' : '#fff' }}>
+                {aReporter.length}
+              </div>
+              <div className="retro-stat-l">Sujets à reporter</div>
+            </div>
           </div>
         </div>
-      </section>
 
-      {/* Bilan automatique calculé */}
-      {bilanCalcule && (
-        <section style={{ marginBottom: '30px', padding: '16px', backgroundColor: '#f0f8ff', borderRadius: '4px', border: '2px solid #0066cc', borderLeft: '4px solid #0066cc' }}>
-          <h2 style={{ color: '#0066cc', margin: '0 0 16px 0' }}>🤖 Bilan Automatique</h2>
-          <p style={{ whiteSpace: 'pre-wrap', color: '#333', margin: 0, lineHeight: '1.6', fontFamily: 'monospace', fontSize: '13px' }}>
-            {bilanCalcule}
-          </p>
-        </section>
-      )}
+        <div className="retro-grille">
+          {/* ---- Aperçu du sprint ---- */}
+          <div className="retro-carte">
+            <div className="retro-carte-titre">Aperçu du sprint</div>
+            <div className="retro-souligne" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {apercu.map((a) => (
+                <div key={a.label} className="retro-ligne">
+                  <span className="retro-ligne-l">{a.label}</span>
+                  <span className="retro-ligne-v">{a.valeur}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-      {/* Points de séance : constats automatiques + ce que l'équipe ajoute */}
-      <PointsSeance sprintId={sprintId} peutEditer={peutEditer} auto={constats} />
+          {/* ---- Résultats, par projet et par porteurs ---- */}
+          <div className="retro-carte">
+            <div className="retro-carte-titre">Résultats du sprint</div>
+            <div className="retro-souligne" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+              {resultats.map((r) => (
+                <div key={r.ticket + r.libelle} className="retro-resultat">
+                  <span className="retro-badge" style={{ background: r.fond, color: r.couleur }}>
+                    <r.Icone taille="14px" />
+                  </span>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="retro-resultat-titre">{r.ticket} · {r.libelle}</div>
+                    <div className="retro-resultat-detail">
+                      {r.noms.join(', ')} — {arrondi(r.reel)} / {arrondi(r.cap)} h · {r.sujets} sujet{r.sujets > 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  <span className="retro-resultat-etat" style={{ color: r.couleur }}>{r.etat}</span>
+                </div>
+              ))}
+              {!resultats.length && <div className="bloc-note">Aucun objectif sur ce sprint.</div>}
+            </div>
+          </div>
 
-      {/* Bilan global */}
-      <SectionEditable
-        title="Bilan Global"
-        section="bilan"
-        bgColor="#f9f9f9"
-        titleColor="#111"
-        icon="📋"
-        placeholder="Résumé global du sprint"
-      />
+          {/* ---- Constats et points de séance ---- */}
+          <PointsSeance
+            sprintId={sprintId}
+            peutEditer={peutEditer}
+            auto={constats}
+            initiaux={JSON.parse(JSON.stringify(retro?.points ?? []))}
+          />
 
-      {/* Points forts */}
-      <SectionEditable
-        title="Points Forts"
-        section="pointsForts"
-        bgColor="#f0fdf4"
-        titleColor="#16a34a"
-        icon="✓"
-        placeholder="Ce qui a bien marché"
-      />
-
-      {/* Points à améliorer */}
-      <SectionEditable
-        title="Points à Améliorer"
-        section="pointsFaibles"
-        bgColor="#fef2f2"
-        titleColor="#dc2626"
-        icon="⚠"
-        placeholder="Ce qui n'a pas marché, ce qui peut être amélioré"
-      />
-
-      {/* Améliorations pour le prochain sprint */}
-      <SectionEditable
-        title="Améliorations pour le Prochain Sprint"
-        section="ameliorations"
-        bgColor="#fefce8"
-        titleColor="#ca8a04"
-        icon="→"
-        placeholder="Actions et améliorations à mettre en place"
-      />
-
-      {message && (
-        <div style={{
-          marginTop: '20px',
-          padding: '12px',
-          backgroundColor: message.includes('Erreur') ? '#fee' : '#efe',
-          color: message.includes('Erreur') ? '#c33' : '#3c3',
-          borderRadius: '4px',
-          borderLeft: '4px solid ' + (message.includes('Erreur') ? '#c33' : '#3c3')
-        }}>
-          {message}
+          {/* ---- Prochaines étapes ---- */}
+          <div className="retro-suite">
+            <div className="retro-suite-titre">Prochaines étapes</div>
+            <div className="retro-suite-note">Reports et actions à embarquer dans le sprint suivant</div>
+            <div className="retro-suite-grille">
+              {suites.map((s, i) => (
+                <div key={`${s.owner}-${i}`} className="retro-suite-carte">
+                  <div className="retro-suite-tete">
+                    <span className="retro-suite-type">{s.type}</span>
+                    <span className="retro-suite-owner">{s.owner}</span>
+                  </div>
+                  <div className="retro-suite-action">{s.action}</div>
+                </div>
+              ))}
+              {constats.AMELIORATION.map((a, i) => (
+                <div key={`amelioration-${i}`} className="retro-suite-carte">
+                  <div className="retro-suite-tete">
+                    <span className="retro-suite-type">Process</span>
+                    <span className="retro-suite-owner">Scrum Master</span>
+                  </div>
+                  <div className="retro-suite-action">{a}</div>
+                </div>
+              ))}
+              {!suites.length && !constats.AMELIORATION.length && (
+                <div className="retro-suite-action">
+                  Rien à reporter : tous les objectifs du sprint ont été atteints.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      )}
-    </div>
-  )
-}
-
-/** useSearchParams impose une frontière Suspense côté client. */
-export default function RetrospectivePage() {
-  return (
-    <Suspense fallback={<div style={{ padding: '40px' }}>Chargement…</div>}>
-      <RetrospectiveContenu />
-    </Suspense>
-  )
+      </div>
+    </Shell>
+  );
 }

@@ -46,15 +46,18 @@ export async function GET(req) {
     }
 
     try {
-      const bilanData = await calculerBilan(sprintId)
+      const [bilanData, constats] = await Promise.all([
+        calculerBilan(sprintId),
+        constatsAutomatiques(sprintId),
+      ])
       return NextResponse.json({
         retrospective,
-        bilanCalcule: bilanData?.bilanAutomatique || '',
         stats: bilanData?.stats || null,
+        constats,
       })
     } catch (err) {
       console.error('[calculerBilan error]', err)
-      return NextResponse.json({ retrospective, bilanCalcule: '', stats: null, constats: { FORT: [], FAIBLE: [], AMELIORATION: [] } })
+      return NextResponse.json({ retrospective, stats: null, constats: { FORT: [], FAIBLE: [], AMELIORATION: [] } })
     }
   } catch (err) {
     console.error('[GET retrospective]', err)
