@@ -116,6 +116,11 @@ export default async function RapportsPage() {
                             {p.reel} h · {p.partTotal} %
                           </span>
                         </div>
+                        {p.porteurs.length > 0 && (
+                          <div className="bloc-note" style={{ marginBottom: 6 }}>
+                            {p.porteurs.join(', ')}
+                          </div>
+                        )}
                         <div className="barre-dev">
                           <div style={{ width: `${p.partBarre}%`, background: COULEURS[i % COULEURS.length] }} />
                         </div>
@@ -158,7 +163,7 @@ export default async function RapportsPage() {
                 <table>
                   <thead>
                     <tr>
-                      <th>Projet</th><th className="num">Sujets</th>
+                      <th>Projet</th><th>Porteurs</th><th className="num">Sujets</th>
                       <th className="num">Engagé</th><th className="num">Consommé</th>
                       <th className="num">Écart</th><th className="num">Part de l’effort</th>
                     </tr>
@@ -168,7 +173,15 @@ export default async function RapportsPage() {
                       const ecart = Math.round((p.reel - p.engage) * 10) / 10;
                       return (
                         <tr key={p.libelle}>
-                          <td>{p.libelle}</td>
+                          <td>
+                            {p.libelle}
+                            {p.ticket && <div className="bloc-note">{p.ticket}</div>}
+                          </td>
+                          <td style={{ minWidth: 180 }}>
+                            {p.porteurs.length
+                              ? p.porteurs.join(', ')
+                              : <span className="muted">— aucun porteur déclaré</span>}
+                          </td>
                           <td className="num muted">{p.sujets}</td>
                           <td className="num">{p.engage} h</td>
                           <td className="num">{p.reel} h</td>

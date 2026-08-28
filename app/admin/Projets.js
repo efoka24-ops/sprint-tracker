@@ -55,10 +55,20 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
     await appel(`/api/projets/${p.id}`, { method: 'DELETE' });
   };
 
-  const basculerPorteur = (p, devId) => {
+  /** Le retour nomme les porteurs retenus : sans confirmation, on doute que l'action ait pris. */
+  const basculerPorteur = async (p, devId) => {
     const actuels = p.porteurs.map((x) => x.id);
     const suivants = actuels.includes(devId) ? actuels.filter((x) => x !== devId) : [...actuels, devId];
-    modifier(p.id, { porteurs: suivants });
+    const d = await modifier(p.id, { porteurs: suivants });
+    if (d) {
+      const noms = (d.porteurs ?? []).map((x) => x.nom);
+      setMsg({
+        t: 'ok',
+        m: noms.length
+          ? `${d.libelle} — porté par ${noms.join(' et ')}`
+          : `${d.libelle} — plus aucun porteur`,
+      });
+    }
   };
 
   if (!projets) return <div className="bloc-note">Chargement…</div>;
@@ -124,6 +134,30 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
             </div>
             <div className="field"><button className="btn" disabled={busy}>Créer</button></div>
           </div>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label>Porteurs — un projet peut en avoir plusieurs</label>
+            <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              {membres.map((m) => {
+                const choisi = nouveau.porteurs.includes(m.id);
+                return (
+                  <button
+                    key={m.id} type="button" disabled={busy}
+                    className={choisi ? 'btn' : 'btn ghost'}
+                    style={{ padding: '5px 12px', fontSize: 12.5 }}
+                    onClick={() => setNouveau({
+                      ...nouveau,
+                      porteurs: choisi
+                        ? nouveau.porteurs.filter((x) => x !== m.id)
+                        : [...nouveau.porteurs, m.id],
+                    })}
+                  >
+                    {m.nom}
+                  </button>
+                );
+              })}
+              {!membres.length && <span className="bloc-note">Aucun membre dans la squad.</span>}
+            </div>
+          </div>
         </form>
       </div>
 
@@ -138,7 +172,7 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
           <table>
             <thead>
               <tr>
-                <th>Ticket Perfit</th><th>Projet</th><th>Porteurs</th>
+                <th>Ticket Perfit</th><th>Projet</th><th>Porteurs <span style={{ fontWeight: 400, textTransform: 'none' }}>(cliquez pour rattacher)</span></th>
                 <th className="num">Enveloppe</th><th className="num">SP</th>
                 <th className="num">Planifié</th><th className="num">Consommé</th>
                 <th>Statut</th><th className="noprint">Actions</th>
@@ -165,7 +199,7 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
                               style={{ padding: '3px 8px', fontSize: 12 }}
                               onClick={() => basculerPorteur(p, m.id)}
                             >
-                              {m.nom.split(' ')[0]}
+                              {m.nom}
                             </button>
                           );
                         })}
