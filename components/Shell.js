@@ -12,6 +12,7 @@ const ENTREES_MENU = [
   { href: '/equipe', label: 'Équipe', icon: '☗', droit: 'dashboard.voir' },
   { href: '/mes-stats', label: 'Mes réalisations', icon: '▦', droit: 'dashboard.voir' },
   { href: '/rapports', label: 'Rapports', icon: '▤', droit: 'export.csv' },
+  { href: '/rapport/retrospective', label: 'Rétrospective', icon: '⟲', droit: 'dashboard.voir' },
   { href: '/admin', label: 'Administration', icon: '⚙', droit: 'compte.gerer.squad' },
   { href: '/moncompte', label: 'Mon compte', icon: '◉', droit: 'dashboard.voir' },
 ];

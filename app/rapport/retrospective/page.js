@@ -26,8 +26,36 @@ export default async function RetrospectivePage({ searchParams }) {
   if (!peut(moi, 'dashboard.voir')) redirect('/');
 
   const sp = await searchParams;
-  const sprintId = sp?.sprintId;
-  if (!sprintId) redirect('/sprints');
+  const perimetre = peut(moi, 'dashboard.tout') ? {} : { squadId: moi.squadId ?? null };
+
+  // Les sprints du périmètre alimentent le sélecteur ; sans paramètre, on ouvre
+  // le dernier sprint clôturé — c'est celui dont on tient la rétrospective.
+  const sprints = await prisma.sprint.findMany({
+    where: perimetre,
+    orderBy: { numero: 'desc' },
+    select: { id: true, libelle: true, cloture: true, numero: true },
+  });
+  const sprintId = sp?.sprintId
+    ?? sprints.find((s) => s.cloture)?.id
+    ?? sprints[0]?.id;
+
+  if (!sprintId) {
+    return (
+      <Shell utilisateur={moi} actif="/rapport/retrospective">
+        <header className="entete">
+          <div>
+            <div className="entete-kicker">{moi.squad?.nom ?? 'Sans squad'}</div>
+            <h1 className="entete-titre">Rétrospective de sprint</h1>
+          </div>
+        </header>
+        <div className="contenu">
+          <div className="carte-blanche">
+            Aucun sprint sur votre périmètre : il n’y a pas encore de rétrospective à tenir.
+          </div>
+        </div>
+      </Shell>
+    );
+  }
 
   const sprint = await prisma.sprint.findUnique({
     where: { id: sprintId },
@@ -118,7 +146,7 @@ export default async function RetrospectivePage({ searchParams }) {
   }));
 
   return (
-    <Shell utilisateur={moi} actif="/sprints">
+    <Shell utilisateur={moi} actif="/rapport/retrospective">
       <header className="entete">
         <div>
           <div className="entete-kicker">
@@ -127,7 +155,21 @@ export default async function RetrospectivePage({ searchParams }) {
           <h1 className="entete-titre">Rétrospective de sprint</h1>
         </div>
         <div className="entete-actions noprint">
-          <Link className="btn ghost" href="/sprints">Retour aux sprints</Link>
+          {sprints.length > 1 && (
+            <div className="segment">
+              {sprints.map((s) => (
+                <Link
+                  key={s.id}
+                  href={`/rapport/retrospective?sprintId=${s.id}`}
+                  className={s.id === sprintId ? 'segment-on' : 'segment-off'}
+                >
+                  {s.libelle.replace(' — démonstration', '')}
+                  {!s.cloture && ' ·'}
+                </Link>
+              ))}
+            </div>
+          )}
+          <Link className="btn ghost" href="/sprints">Tous les sprints</Link>
         </div>
       </header>
 

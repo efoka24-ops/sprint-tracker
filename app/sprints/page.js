@@ -55,7 +55,7 @@ export default async function SprintsPage() {
                 <tr>
                   <th>Sprint</th><th>Période</th>
                   <th className="num">Capacité</th><th className="num">Engagé</th><th className="num">Consommé</th>
-                  <th>Objectifs validés</th><th>État</th>
+                  <th>Objectifs validés</th><th>État</th><th className="noprint">Rétrospective</th>
                 </tr>
               </thead>
               <tbody>
@@ -89,10 +89,16 @@ export default async function SprintsPage() {
                         {s.etat}
                       </span>
                     </td>
+                    <td className="noprint">
+                      <Link className="btn ghost" style={{ padding: '5px 12px', whiteSpace: 'nowrap' }}
+                        href={`/rapport/retrospective?sprintId=${s.id}`}>
+                        Voir la rétrospective
+                      </Link>
+                    </td>
                   </tr>
                 ))}
                 {!historique.length && (
-                  <tr><td colSpan={7} className="bloc-note">
+                  <tr><td colSpan={8} className="bloc-note">
                     Aucun sprint pour l’instant.
                     {peut(moi, 'sprint.creer') && <> Créez-en un depuis <Link href="/admin">l’administration</Link>.</>}
                   </td></tr>
