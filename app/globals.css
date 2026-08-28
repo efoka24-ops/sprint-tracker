@@ -235,3 +235,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--orange);outline-
 .segment-on{background:#fff;color:#111;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .segment-off{background:transparent;color:#7b828c}
 .segment-off:hover{color:#111}
+/* Backlog prêt, dans le bloc « Prochaines étapes » de la rétrospective. */
+.retro-backlog{background:#fff;border:1px solid #ffe2c2;border-radius:12px;padding:18px 20px;margin-bottom:20px}
+.retro-backlog-tete{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.retro-backlog-chiffres{font-size:13.5px;font-weight:700;color:#8a4700;margin-top:4px}

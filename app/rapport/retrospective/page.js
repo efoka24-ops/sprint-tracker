@@ -12,7 +12,15 @@ import { IconeSucces, IconeAlerte, IconeFleche } from '@/components/Icones';
 export const dynamic = 'force-dynamic';
 
 const fmt = (d) => new Date(d).toLocaleDateString('fr-FR');
-const arrondi = (n) => Math.round(n * 10) / 10;
+const arrondi = (n) => Math.round((n ?? 0) * 10) / 10;
+
+/** Couleurs de priorité du backlog, alignées sur l'écran Backlog produit. */
+const PRIO = {
+  HAUTE:   { background: '#fdecea', color: '#c0392b' },
+  MOYENNE: { background: '#fff2e3', color: '#c2680a' },
+  BASSE:   { background: '#f0f1f3', color: '#7b828c' },
+};
+const LIBELLE_PRIO = { HAUTE: 'Haute', MOYENNE: 'Moyenne', BASSE: 'Basse' };
 
 /**
  * Rétrospective de fin de sprint, sur le modèle « Template Application Sprint
@@ -78,14 +86,45 @@ export default async function RetrospectivePage({ searchParams }) {
   if (!sprint) redirect('/sprints');
   if (!peut(moi, 'dashboard.tout') && sprint.squadId !== (moi.squadId ?? null)) redirect('/sprints');
 
-  const [bilan, constats, retro] = await Promise.all([
+  const [bilan, constats, retro, backlogPret] = await Promise.all([
     calculerBilan(sprintId),
     constatsAutomatiques(sprintId),
     prisma.retrospective.findUnique({
       where: { sprintId },
       include: { points: { orderBy: { createdAt: 'asc' } } },
     }),
+    // Ce qui est prêt à embarquer au prochain sprint : la rétrospective clôt un
+    // cycle et ouvre le suivant, elle doit montrer les deux.
+    prisma.userStory.findMany({
+      where: { etatBacklog: 'PRET', statut: { in: ['A_FAIRE', 'BLOQUE'] }, projet: perimetre },
+      include: {
+        projet: { select: { libelle: true, ticket: true } },
+        porteur: { select: { nom: true } },
+      },
+      orderBy: [{ priorite: 'asc' }, { heuresEstimees: 'desc' }],
+    }),
   ]);
+
+  // Ce que les enveloppes de faisabilité n'ont pas encore consommé : c'est la
+  // matière du prochain sprint, même quand le backlog n'est pas encore découpé.
+  const projetsActifs = await prisma.projet.findMany({
+    where: { ...perimetre, statut: 'ACTIF' },
+    include: {
+      porteurs: { include: { developpeur: { select: { nom: true } } } },
+      entrees: { select: { capaciteH: true } },
+    },
+    orderBy: { heuresFaisabilite: 'desc' },
+  });
+  const resteAPlanifier = projetsActifs
+    .map((p) => ({
+      ticket: p.ticket,
+      libelle: p.libelle,
+      porteurs: p.porteurs.map((x) => x.developpeur.nom),
+      enveloppe: p.heuresFaisabilite,
+      place: arrondi(p.entrees.reduce((t, e) => t + (e.capaciteH ?? 0), 0)),
+      reste: arrondi(p.heuresFaisabilite - p.entrees.reduce((t, e) => t + (e.capaciteH ?? 0), 0)),
+    }))
+    .filter((p) => p.reste > 0);
   const stats = bilan?.stats;
   const peutEditer = peut(moi, 'semaine.cloturer');
 
@@ -250,7 +289,113 @@ export default async function RetrospectivePage({ searchParams }) {
           {/* ---- Prochaines étapes ---- */}
           <div className="retro-suite">
             <div className="retro-suite-titre">Prochaines étapes</div>
-            <div className="retro-suite-note">Reports et actions à embarquer dans le sprint suivant</div>
+            <div className="retro-suite-note">
+              Reports, actions et backlog à embarquer dans le sprint suivant
+            </div>
+
+            {/* Le backlog prêt : ce que le prochain sprint peut prendre. */}
+            <div className="retro-backlog">
+              <div className="retro-backlog-tete">
+                <div>
+                  <span className="retro-suite-type">Backlog produit · prêt à embarquer</span>
+                  <div className="retro-backlog-chiffres">
+                    {backlogPret.length} item{backlogPret.length > 1 ? 's' : ''}
+                    {' · '}{arrondi(backlogPret.reduce((t, u) => t + (u.heuresEstimees ?? 0), 0))} h
+                    {' · '}{backlogPret.reduce((t, u) => t + (u.storyPoints ?? 0), 0)} SP
+                    {stats.capacite > 0 && backlogPret.length > 0 && (
+                      <> — soit {Math.round(
+                        (backlogPret.reduce((t, u) => t + (u.heuresEstimees ?? 0), 0) / stats.capacite) * 100,
+                      )} % de la capacité d’un sprint</>
+                    )}
+                  </div>
+                </div>
+                <Link className="btn ghost" href="/backlog" style={{ whiteSpace: 'nowrap' }}>
+                  Ouvrir le backlog
+                </Link>
+              </div>
+
+              {backlogPret.length ? (
+                <div className="scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Ticket</th><th>Item · projet</th><th>Porteur pressenti</th>
+                        <th>Prio</th><th className="num">Charge</th><th className="num">SP</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {backlogPret.map((u) => (
+                        <tr key={u.id}>
+                          <td className="muted">{u.reference}</td>
+                          <td>
+                            {u.titre}
+                            <div className="bloc-note">{u.projet?.libelle}</div>
+                          </td>
+                          <td>{u.porteur?.nom ?? <span className="muted">Non assigné</span>}</td>
+                          <td>
+                            <span className="badge" style={PRIO[u.priorite] ?? PRIO.MOYENNE}>
+                              {LIBELLE_PRIO[u.priorite] ?? u.priorite}
+                            </span>
+                          </td>
+                          <td className="num">{arrondi(u.heuresEstimees)} h</td>
+                          <td className="num" style={{ fontWeight: 700 }}>{u.storyPoints} SP</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="retro-suite-action">
+                  Aucun item n’est au statut « Prêt ». Affinez le backlog avant le prochain planning,
+                  sinon le sprint s’ouvrira sans matière arbitrée.
+                </div>
+              )}
+            </div>
+
+            {/* À défaut de backlog découpé, ce qui reste des enveloppes de faisabilité. */}
+            {resteAPlanifier.length > 0 && (
+              <div className="retro-backlog">
+                <div className="retro-backlog-tete">
+                  <div>
+                    <span className="retro-suite-type">Reste à planifier · enveloppes de faisabilité</span>
+                    <div className="retro-backlog-chiffres">
+                      {resteAPlanifier.length} projet{resteAPlanifier.length > 1 ? 's' : ''}
+                      {' · '}{arrondi(resteAPlanifier.reduce((t, p) => t + p.reste, 0))} h non encore planifiées
+                    </div>
+                  </div>
+                  <Link className="btn ghost" href="/admin" style={{ whiteSpace: 'nowrap' }}>
+                    Ouvrir le portefeuille
+                  </Link>
+                </div>
+                <div className="scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Ticket</th><th>Projet</th><th>Porteurs</th>
+                        <th className="num">Enveloppe</th><th className="num">Planifié</th><th className="num">Reste</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {resteAPlanifier.map((p) => (
+                        <tr key={p.ticket}>
+                          <td className="muted">{p.ticket}</td>
+                          <td>{p.libelle}</td>
+                          <td>
+                            {p.porteurs.length
+                              ? p.porteurs.join(', ')
+                              : <span className="muted">— aucun porteur déclaré</span>}
+                          </td>
+                          <td className="num">{arrondi(p.enveloppe)} h</td>
+                          <td className="num muted">{p.place} h</td>
+                          <td className="num" style={{ fontWeight: 700, color: '#8a4700' }}>{p.reste} h</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             <div className="retro-suite-grille">
               {suites.map((s, i) => (
                 <div key={`${s.owner}-${i}`} className="retro-suite-carte">
