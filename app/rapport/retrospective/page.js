@@ -146,7 +146,7 @@ export default async function RetrospectivePage({ searchParams }) {
     acc.cap += e.capaciteH ?? 0;
     acc.reel += e.reelH ?? 0;
     acc.sujets += 1;
-    if (e.valide) acc.valides += 1;
+    if (e.execution === 'LIVE') acc.valides += 1;
     if (e.execution === 'BLOQUE' || e.blocage) acc.bloques += 1;
     parProjet.set(cle, acc);
   }
@@ -176,7 +176,7 @@ export default async function RetrospectivePage({ searchParams }) {
     },
   ];
 
-  const aReporter = entrees.filter((e) => !e.valide);
+  const aReporter = entrees.filter((e) => e.execution !== 'LIVE');
   const suites = aReporter.map((e) => ({
     type: e.execution === 'BLOQUE' || e.blocage ? 'Blocage à lever' : 'Report sprint suivant',
     owner: e.developpeur.nom,
