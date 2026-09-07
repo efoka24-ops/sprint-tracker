@@ -11,11 +11,18 @@ import {
 export const dynamic = 'force-dynamic';
 
 /** Backlog de la squad : toutes les US de ses projets, avec le tableau de bord. */
-export async function GET() {
+export async function GET(req) {
   const moi = await utilisateurCourant();
   if (!peut(moi, 'dashboard.voir')) return NextResponse.json({ error: 'Non connecté' }, { status: 401 });
 
-  const where = peut(moi, 'dashboard.tout') ? {} : { projet: { squadId: moi.squadId ?? null } };
+  const sprintId = req.nextUrl.searchParams.get('sprintId');
+  const porteurId = req.nextUrl.searchParams.get('porteurId');
+
+  const where = {
+    ...(peut(moi, 'dashboard.tout') ? {} : { projet: { squadId: moi.squadId ?? null } }),
+    ...(sprintId ? { sprintId } : {}),
+    ...(porteurId ? { OR: [{ porteurId }, { porteurId: null }] } : {}),
+  };
 
   const stories = await prisma.userStory.findMany({
     where, include: AVEC_PROJET, orderBy: [{ createdAt: 'asc' }],

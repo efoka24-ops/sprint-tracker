@@ -17,6 +17,8 @@ export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
   const [busy, setBusy] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
   const [importMsg, setImportMsg] = useState(null);
+  const [sujets, setSujets] = useState([]);
+  const [sujetId, setSujetId] = useState('');
 
   const importer = async (e) => {
     const fichier = e.target.files?.[0];
@@ -48,6 +50,17 @@ export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
     if (r.ok) setMes(await r.json());
   };
   useEffect(() => { charger(); /* eslint-disable-next-line */ }, [semaineId]);
+
+  const chargerSujets = async () => {
+    const semaine = semaines.find((s) => s.id === semaineId);
+    const sprintId = semaine?.sprintId;
+    if (!sprintId) return setSujets([]);
+    const r = await fetch(`/api/user-stories?sprintId=${sprintId}&porteurId=${moi.id}`, { cache: 'no-store' });
+    if (!r.ok) return setSujets([]);
+    const d = await r.json();
+    setSujets((d.stories ?? []).filter((s) => ['A_FAIRE', 'EN_COURS', 'BLOQUE'].includes(s.statut)));
+  };
+  useEffect(() => { chargerSujets(); setSujetId(''); /* eslint-disable-next-line */ }, [semaineId]);
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
@@ -146,6 +159,38 @@ export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
             ))}
           </select>
         </div>
+
+        {sujets.length > 0 && (
+          <div className="field">
+            <label>Sujet du sprint (préremplissage)</label>
+            <select
+              value={sujetId}
+              onChange={(e) => {
+                const id = e.target.value;
+                setSujetId(id);
+                if (!id) return;
+                const us = sujets.find((x) => x.id === id);
+                if (!us) return;
+                setF((prev) => ({
+                  ...prev,
+                  ticket: us.reference || us.projet?.ticket || prev.ticket || '',
+                  projet: us.projet?.libelle || prev.projet || '',
+                  capaciteH: prev.capaciteH || String(us.heuresEstimees ?? ''),
+                }));
+              }}
+            >
+              <option value="">— Saisie libre —</option>
+              {sujets.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.reference} · {s.titre}
+                </option>
+              ))}
+            </select>
+            <div className="bloc-note" style={{ marginTop: 4 }}>
+              Ticket, projet et capacité sont repris du sujet sélectionné ; vous mettez ensuite à jour l'objectif hebdo, le réel et le statut.
+            </div>
+          </div>
+        )}
 
         <div className="row">
           <div style={{ flex: 1 }} className="field">
