@@ -73,6 +73,10 @@ export async function POST(req) {
     }
   }
 
+  if (b.valide === true && execution !== 'LIVE') {
+    return NextResponse.json({ error: 'Un objectif ne peut être validé que si son statut est Live' }, { status: 409 });
+  }
+
   const heures = Number(b.capaciteH) || 0;
   const debordement = await verifierSemaine({ heures, porteurId, semaine, entreeId: b.id });
   if (debordement) return NextResponse.json({ error: debordement }, { status: 409 });
@@ -80,6 +84,7 @@ export async function POST(req) {
   const data = {
     ticket: String(b.ticket).trim(),
     projet: String(b.projet).trim(),
+    projetId: null,
     objectif: String(b.objectif).trim(),
     capaciteH: Number(b.capaciteH) || 0,
     reelH: b.reelH === '' || b.reelH === null || b.reelH === undefined ? null : Number(b.reelH),
@@ -87,6 +92,12 @@ export async function POST(req) {
     commentaire: b.commentaire || null,
     blocage: b.blocage || null,
   };
+
+  const projetRef = await prisma.projet.findFirst({
+    where: { squadId: semaine.sprint.squadId ?? null, ticket: data.ticket },
+    select: { id: true },
+  });
+  data.projetId = projetRef?.id ?? (b.projetId || null);
 
   publierBdEnFond(b.id ? 'mise à jour d’un objectif' : 'saisie d’un objectif');
 

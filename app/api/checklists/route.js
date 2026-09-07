@@ -53,6 +53,14 @@ export async function GET(req) {
     : await verifierPerimetreEntree(moi, entreeId);
   if (!perimetreOk) return NextResponse.json({ error: 'Hors périmètre' }, { status: 403 });
 
+  if (!sprintId && entreeId) {
+    const entree = await prisma.entree.findUnique({
+      where: { id: entreeId },
+      select: { projetRef: { select: { suiviChecklist: true } } },
+    });
+    if (entree?.projetRef?.suiviChecklist === false) return NextResponse.json([]);
+  }
+
   const instances = await instancesPour({
     sprintId: sprintId || undefined,
     entreeId: entreeId || undefined,

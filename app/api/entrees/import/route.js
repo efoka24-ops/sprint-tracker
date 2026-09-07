@@ -61,6 +61,11 @@ export async function POST(req) {
     ? {} : { squadId: semaine.sprint.squadId };
   const developpeurs = await prisma.developpeur.findMany({ where: { actif: true, ...filtreSquad } });
   const parNom = new Map(developpeurs.map((d) => [normaliser(d.nom), d]));
+  const projets = await prisma.projet.findMany({
+    where: !semaine.sprint.squadId ? {} : { squadId: semaine.sprint.squadId },
+    select: { id: true, ticket: true },
+  });
+  const parTicket = new Map(projets.map((p) => [normaliser(p.ticket), p.id]));
 
   const resultats = { crees: 0, maj: 0, ignorees: 0, erreurs: [] };
 
@@ -99,6 +104,7 @@ export async function POST(req) {
     const data = {
       ticket,
       projet,
+      projetId: parTicket.get(normaliser(ticket)) || null,
       objectif,
       capaciteH: Number(String(capaciteBrut).replace(',', '.')) || 0,
       reelH: reelBrut === '' ? null : Number(String(reelBrut).replace(',', '.')),

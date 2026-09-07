@@ -56,11 +56,12 @@ export default function LigneValidation({ entree, peutCocherChecklist, peutValid
           />
         </td>
         <td style={{ minWidth: 280 }}>
-          <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'nowrap' }}>
             <select
               value={execution}
               onChange={(e) => { const v = e.target.value; setExecution(v); save({ execution: v }); }}
               disabled={busy}
+              style={{ minWidth: 128 }}
             >
               {ORDRE_STATUTS.map((k) => <option key={k} value={k}>{STATUTS[k].label}</option>)}
             </select>
@@ -72,7 +73,12 @@ export default function LigneValidation({ entree, peutCocherChecklist, peutValid
               />
               Valide
             </label>
-            <button type="button" className="btn ghost" style={{ padding: '4px 10px', fontSize: 13 }} onClick={toggle}>
+            <button
+              type="button"
+              className="btn ghost"
+              style={{ padding: '6px 10px', fontSize: 12.5, minWidth: 146, textAlign: 'center', lineHeight: 1.2 }}
+              onClick={toggle}
+            >
               {ouvert ? 'Masquer la checklist' : 'Checklist'}
             </button>
           </div>

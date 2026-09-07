@@ -28,6 +28,21 @@ export async function PATCH(req, { params }) {
     if (!peut(moi, 'entree.valider')) {
       return NextResponse.json({ error: 'Seul le Tech Lead ou le super admin valide un objectif' }, { status: 403 });
     }
+    if (b.valide && (b.execution ?? entree.execution) !== 'LIVE') {
+      return NextResponse.json({ error: 'Un objectif ne peut être validé que si son statut est Live' }, { status: 409 });
+    }
+    if (b.valide) {
+      const semaine = await prisma.semaine.findUnique({ where: { id: entree.semaineId } });
+      const manquant = await checklistManquantePour(prisma, 'OBJECTIF_ATTEINT', {
+        sprintId: semaine.sprintId,
+        entreeId: entree.id,
+      });
+      if (manquant) {
+        return NextResponse.json({
+          error: `Checklist « ${libelleType(manquant)} » non validée : impossible de valider l’objectif.`,
+        }, { status: 409 });
+      }
+    }
     data.valide = !!b.valide;
   }
 
@@ -76,6 +91,14 @@ export async function PATCH(req, { params }) {
         : k === 'capaciteH' ? Number(b.capaciteH) || 0
           : b[k];
     }
+
+    const semaine = await prisma.semaine.findUnique({ where: { id: data.semaineId ?? entree.semaineId }, include: { sprint: true } });
+    const ticket = String(data.ticket ?? entree.ticket).trim();
+    const projetRef = await prisma.projet.findFirst({
+      where: { squadId: semaine?.sprint?.squadId ?? null, ticket },
+      select: { id: true },
+    });
+    data.projetId = projetRef?.id ?? null;
   }
 
   if (!Object.keys(data).length) {

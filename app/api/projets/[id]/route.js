@@ -53,6 +53,7 @@ export async function PATCH(req, { params }) {
   if (b.heuresFaisabilite !== undefined) data.heuresFaisabilite = Number(b.heuresFaisabilite);
   if (b.storyPoints !== undefined) data.storyPoints = Number(b.storyPoints);
   if (b.statut !== undefined) data.statut = b.statut;
+  if (b.suiviChecklist !== undefined) data.suiviChecklist = !!b.suiviChecklist;
 
   // Les porteurs sont remplacés en bloc : le client envoie la liste voulue.
   if (b.porteurs !== undefined) {

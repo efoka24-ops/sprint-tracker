@@ -76,6 +76,7 @@ model Projet {
   heuresFaisabilite Float    @default(0)          // enveloppe estimee en faisabilite
   storyPoints       Int      @default(0)
   statut            String   @default("ACTIF")    // ACTIF | BLOQUE | TERMINE
+  suiviChecklist    Boolean  @default(true)       // pilotage checklist projet actif ou non
   squad             Squad?   @relation(fields: [squadId], references: [id])
   squadId           String?
   porteurs          ProjetPorteur[]

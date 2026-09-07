@@ -5,6 +5,7 @@ import { peut } from '@/lib/roles';
 import { recalculerCapacites } from '@/lib/capacite';
 import { decouperEnSemaines, jour } from '@/lib/calendrier';
 import { publierBdEnFond } from '@/lib/depot';
+import { calculerBilan } from '@/lib/retrospective';
 
 export const dynamic = 'force-dynamic';
 
@@ -143,6 +144,30 @@ export async function PATCH(req, { params }) {
   if (!Object.keys(data).length) {
     return NextResponse.json({ error: 'Aucune modification demandée' }, { status: 400 });
   }
+
+  if (data.cloture === true) {
+    const bilanData = await calculerBilan(id);
+    const stats = bilanData?.stats;
+    const resume = stats
+      ? [
+          `${stats.libelle} — bilan général`,
+          `Objectifs Live : ${stats.livres}/${stats.total} (${stats.tauxRealisation} %).`,
+          `Charge consommée : ${stats.reel} h / ${stats.capacite} h (occupation ${stats.tauxOccupation} %).`,
+          stats.bloques > 0 ? `${stats.bloques} objectif(s) bloqué(s) à traiter.` : 'Aucun blocage ouvert à la clôture.',
+        ].join('\n')
+      : null;
+
+    await prisma.retrospective.upsert({
+      where: { sprintId: id },
+      update: {
+        bilan: resume ?? undefined,
+        animateurId: moi.id,
+        animateurNom: moi.nom,
+      },
+      create: { sprintId: id, bilan: resume, animateurId: moi.id, animateurNom: moi.nom },
+    });
+  }
+
   publierBdEnFond('modification d’un sprint');
   return NextResponse.json(await prisma.sprint.update({ where: { id }, data }));
 }

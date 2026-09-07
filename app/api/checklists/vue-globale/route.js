@@ -29,6 +29,10 @@ export async function GET() {
   const entrees = await prisma.entree.findMany({
     where: {
       semaine: { sprint: perimetreSquad },
+      OR: [
+        { projetRef: { is: null } },
+        { projetRef: { is: { suiviChecklist: true } } },
+      ],
     },
     include: {
       developpeur: { select: { nom: true } },

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { STATUTS_PROJET } from '@/lib/projets';
 
-const VIDE = { ticket: '', libelle: '', heuresFaisabilite: '', storyPoints: '', porteurs: [] };
+const VIDE = { ticket: '', libelle: '', heuresFaisabilite: '', storyPoints: '', porteurs: [], suiviChecklist: true };
 
 /**
  * Portefeuille de projets : l'enveloppe estimée en faisabilité est saisie une
@@ -16,6 +16,12 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
   const [nouveau, setNouveau] = useState(VIDE);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
+
+  const importerRef = (e) => {
+    if (e.target.value) importer(e.target.files?.[0]);
+    e.target.value = '';
+  };
 
   const charger = async () => {
     const r = await fetch('/api/projets', { cache: 'no-store' });
@@ -53,6 +59,31 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
   const supprimer = async (p) => {
     if (!confirm(`Supprimer le projet « ${p.libelle} » ?`)) return;
     await appel(`/api/projets/${p.id}`, { method: 'DELETE' });
+  };
+
+  const importer = async (fichier) => {
+    if (!fichier) return;
+    setImportBusy(true);
+    setMsg(null);
+    try {
+      const form = new FormData();
+      form.append('fichier', fichier);
+      const r = await fetch('/api/projets/import', { method: 'POST', body: form });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        setMsg({ t: 'err', m: d.error ?? 'Import impossible' });
+      } else {
+        const info = [`${d.crees ?? 0} créé(s)`, `${d.maj ?? 0} mis à jour`, `${d.ignorees ?? 0} ignoré(s)`].join(' · ');
+        setMsg({ t: 'ok', m: `Import projets terminé: ${info}` });
+        if (d.erreurs?.length) {
+          setMsg({ t: 'err', m: `${info}. ${d.erreurs.length} erreur(s) : ${d.erreurs.slice(0, 2).join(' | ')}` });
+        }
+        await charger();
+      }
+    } catch {
+      setMsg({ t: 'err', m: 'Connexion au serveur impossible. Réessayez.' });
+    }
+    setImportBusy(false);
   };
 
   /** Le retour nomme les porteurs retenus : sans confirmation, on doute que l'action ait pris. */
@@ -134,6 +165,16 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
             </div>
             <div className="field"><button className="btn" disabled={busy}>Créer</button></div>
           </div>
+          <div className="field" style={{ marginTop: 4 }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={nouveau.suiviChecklist}
+                onChange={(e) => setNouveau({ ...nouveau, suiviChecklist: e.target.checked })}
+              />
+              Suivre la checklist projet pour ce projet
+            </label>
+          </div>
           <div className="field" style={{ marginBottom: 0 }}>
             <label>Porteurs — un projet peut en avoir plusieurs</label>
             <div className="row" style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -167,6 +208,14 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
           <div className="bloc-note">
             L’enveloppe se saisit ici une seule fois ; les objectifs hebdomadaires s’imputent dessus.
           </div>
+          <div className="row" style={{ gap: 8, marginLeft: 'auto' }}>
+            <a className="btn ghost" href="/api/projets/template">Télécharger le template</a>
+            <label className="btn ghost" style={{ cursor: importBusy ? 'not-allowed' : 'pointer', opacity: importBusy ? 0.6 : 1 }}>
+              {importBusy ? 'Import en cours…' : 'Importer des projets'}
+              <input type="file" accept=".xlsx" disabled={importBusy} style={{ display: 'none' }} onChange={importerRef} />
+            </label>
+            <a className="btn ghost" href="/api/projets/export">Exporter les projets</a>
+          </div>
         </div>
         <div className="scroll">
           <table>
@@ -175,7 +224,7 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
                 <th>Ticket Perfit</th><th>Projet</th><th>Porteurs <span style={{ fontWeight: 400, textTransform: 'none' }}>(cliquez pour rattacher)</span></th>
                 <th className="num">Enveloppe</th><th className="num">SP</th>
                 <th className="num">Planifié</th><th className="num">Consommé</th>
-                <th>Statut</th><th className="noprint">Actions</th>
+                <th>Checklist</th><th>Statut</th><th className="noprint">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -230,6 +279,16 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
                       {p.consommeH} h
                     </td>
                     <td>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <input
+                          type="checkbox"
+                          checked={p.suiviChecklist !== false}
+                          onChange={(e) => modifier(p.id, { suiviChecklist: e.target.checked })}
+                        />
+                        <span style={{ fontSize: 12.5 }}>{p.suiviChecklist !== false ? 'Activée' : 'Désactivée'}</span>
+                      </label>
+                    </td>
+                    <td>
                       <select value={p.statut} disabled={busy}
                         onChange={(e) => modifier(p.id, { statut: e.target.value })}>
                         {Object.entries(STATUTS_PROJET).map(([k, s]) => (
@@ -247,7 +306,7 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
                 );
               })}
               {!projets.length && (
-                <tr><td colSpan={9} className="bloc-note">Aucun projet. Créez-en un à partir de vos faisabilités.</td></tr>
+                <tr><td colSpan={10} className="bloc-note">Aucun projet. Créez-en un à partir de vos faisabilités.</td></tr>
               )}
             </tbody>
           </table>
