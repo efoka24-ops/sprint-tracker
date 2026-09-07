@@ -168,6 +168,7 @@ export default async function RetrospectivePage({ searchParams }) {
     { label: 'Période', valeur: `${fmt(sprint.dateDebut)} → ${fmt(sprint.dateFin)}` },
     { label: 'Durée', valeur: `${sprint.nbSemaines} semaine${sprint.nbSemaines > 1 ? 's' : ''}` },
     { label: 'Sujets engagés', valeur: `${stats.total} sujets · ${stats.engage} h engagées` },
+    { label: 'Progression objectifs validés', valeur: `${stats.valides}/${stats.total} (${stats.tauxValidation} %)` },
     { label: 'Capacité de l’équipe', valeur: `${stats.capacite} h` },
     { label: 'Consommation réelle', valeur: `${stats.reel} h (${stats.tauxOccupation} %)` },
     {
@@ -225,7 +226,11 @@ export default async function RetrospectivePage({ searchParams }) {
           <div className="retro-stats">
             <div>
               <div className="retro-stat-v" style={{ color: '#FF7900' }}>{stats.tauxRealisation} %</div>
-              <div className="retro-stat-l">Objectifs atteints</div>
+              <div className="retro-stat-l">Objectifs atteints (LIVE)</div>
+            </div>
+            <div>
+              <div className="retro-stat-v" style={{ color: '#fff' }}>{stats.tauxValidation} %</div>
+              <div className="retro-stat-l">Progression objectifs validés</div>
             </div>
             <div>
               <div className="retro-stat-v" style={{ color: '#fff' }}>{stats.reel} h</div>

@@ -152,6 +152,7 @@ export async function PATCH(req, { params }) {
       ? [
           `${stats.libelle} — bilan général`,
           `Objectifs Live : ${stats.livres}/${stats.total} (${stats.tauxRealisation} %).`,
+          `Objectifs validés : ${stats.valides}/${stats.total} (${stats.tauxValidation} %).`,
           `Charge consommée : ${stats.reel} h / ${stats.capacite} h (occupation ${stats.tauxOccupation} %).`,
           stats.bloques > 0 ? `${stats.bloques} objectif(s) bloqué(s) à traiter.` : 'Aucun blocage ouvert à la clôture.',
         ].join('\n')
