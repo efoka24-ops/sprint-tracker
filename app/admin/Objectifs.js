@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { STATUTS, ORDRE_STATUTS } from '@/lib/constants';
 
 const VIDE = {
-  capaciteH: '', reelH: '', execution: 'NON_DEMARRE', commentaire: '',
+  capaciteH: '', reelH: '', execution: 'NON_DEMARRE', commentaire: '', userStoryId: '',
 };
 
 /**
@@ -86,7 +86,7 @@ export default function Objectifs({ sprints, membres, moiId }) {
 
   const editer = (l) => setF({
     projet: l.projet, objectif: l.objectif, capaciteH: l.capaciteH, reelH: l.reelH ?? '',
-    execution: l.execution, commentaire: l.commentaire ?? '',
+    execution: l.execution, commentaire: l.commentaire ?? '', userStoryId: l.userStoryId ?? '',
   });
 
   if (!sprints.length) {
@@ -153,6 +153,7 @@ export default function Objectifs({ sprints, membres, moiId }) {
                 if (!us) return;
                 setF((prev) => ({
                   ...prev,
+                  userStoryId: us.id,
                   ticket: us.reference || us.projet?.ticket || prev.ticket || '',
                   projet: us.projet?.libelle || prev.projet || '',
                   capaciteH: prev.capaciteH || String(us.heuresEstimees ?? ''),
@@ -251,6 +252,7 @@ export default function Objectifs({ sprints, membres, moiId }) {
                   </td>
                   <td>
                     {l.ticket} · {l.projet}
+                    {l.userStoryRef?.titre && <div className="bloc-note">Sujet lié : {l.userStoryRef.titre}</div>}
                     <div className="bloc-note">{l.objectif}</div>
                   </td>
                   <td className="num">{l.capaciteH} h</td>

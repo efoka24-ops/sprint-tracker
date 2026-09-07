@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 
 const AVEC_PORTEUR = {
   developpeur: { select: { id: true, nom: true, role: true, squadId: true } },
+  userStoryRef: { select: { id: true, titre: true, reference: true } },
 };
 
 export async function GET(req) {
@@ -87,6 +88,7 @@ export async function POST(req) {
     ticket: String(b.ticket).trim(),
     projet: String(b.projet).trim(),
     projetId: null,
+    userStoryId: b.userStoryId || null,
     objectif: String(b.objectif).trim(),
     capaciteH: Number(b.capaciteH) || 0,
     reelH: b.reelH === '' || b.reelH === null || b.reelH === undefined ? null : Number(b.reelH),
@@ -100,6 +102,14 @@ export async function POST(req) {
     select: { id: true },
   });
   data.projetId = projetRef?.id ?? (b.projetId || null);
+
+  if (data.userStoryId) {
+    const us = await prisma.userStory.findUnique({ where: { id: data.userStoryId }, select: { id: true, sprintId: true } });
+    if (!us) return NextResponse.json({ error: 'Sujet du sprint introuvable' }, { status: 404 });
+    if (us.sprintId !== semaine.sprintId) {
+      return NextResponse.json({ error: 'Ce sujet n\'appartient pas au sprint sélectionné' }, { status: 409 });
+    }
+  }
 
   const deja = !b.id
     ? await prisma.entree.findFirst({ where: { semaineId: b.semaineId, developpeurId: porteurId, ticket: data.ticket } })

@@ -112,6 +112,7 @@ model UserStory {
   etatBacklog    String       @default("NOUVEAU") // NOUVEAU | A_AFFINER | AFFINE | PRET
   statut         String       @default("A_FAIRE") // A_FAIRE | EN_COURS | EN_TEST | TERMINE | BLOQUE
   sprintId       String?                          // sprint dans lequel l'US est embarquee
+  entrees        Entree[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -210,6 +211,8 @@ model Entree {
   projet        String                     // "HLR Manager" (libelle libre, repris du Projet quand il est rattache)
   projetRef     Projet?     @relation(fields: [projetId], references: [id])
   projetId      String?
+  userStoryRef  UserStory?  @relation(fields: [userStoryId], references: [id])
+  userStoryId   String?
   objectif      String                       // objectif de la semaine
   capaciteH     Float       @default(0)
   reelH         Float?
@@ -224,6 +227,7 @@ model Entree {
   createdAt     DateTime    @default(now())
 
   @@index([semaineId])
+  @@index([userStoryId])
 }
 
 /** Journal des publications du classeur Excel dans le depot GitHub. */

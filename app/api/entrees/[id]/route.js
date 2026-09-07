@@ -80,7 +80,7 @@ export async function PATCH(req, { params }) {
     }
   }
 
-  const champsPorteur = ['execution', 'reelH', 'commentaire', 'blocage', 'ticket', 'projet', 'objectif', 'capaciteH'].filter((k) => k in b);
+  const champsPorteur = ['execution', 'reelH', 'commentaire', 'blocage', 'ticket', 'projet', 'objectif', 'capaciteH', 'userStoryId'].filter((k) => k in b);
   if (champsPorteur.length) {
     if (!peutSurEntree(moi, 'modifier', entree)) {
       return NextResponse.json({ error: 'Objectif porté par un autre développeur' }, { status: 403 });
@@ -90,6 +90,15 @@ export async function PATCH(req, { params }) {
         ? (b.reelH === '' || b.reelH === null ? null : Number(b.reelH))
         : k === 'capaciteH' ? Number(b.capaciteH) || 0
           : b[k];
+    }
+
+    if ('userStoryId' in data && data.userStoryId) {
+      const semaine = await prisma.semaine.findUnique({ where: { id: data.semaineId ?? entree.semaineId } });
+      const us = await prisma.userStory.findUnique({ where: { id: data.userStoryId }, select: { id: true, sprintId: true } });
+      if (!us) return NextResponse.json({ error: 'Sujet du sprint introuvable' }, { status: 404 });
+      if (us.sprintId !== semaine?.sprintId) {
+        return NextResponse.json({ error: 'Ce sujet n\'appartient pas au sprint sélectionné' }, { status: 409 });
+      }
     }
 
     const semaine = await prisma.semaine.findUnique({ where: { id: data.semaineId ?? entree.semaineId }, include: { sprint: true } });
@@ -119,7 +128,10 @@ export async function PATCH(req, { params }) {
   return NextResponse.json(
     await prisma.entree.update({
       where: { id }, data,
-      include: { developpeur: { select: { id: true, nom: true, role: true } } },
+      include: {
+        developpeur: { select: { id: true, nom: true, role: true } },
+        userStoryRef: { select: { id: true, titre: true, reference: true } },
+      },
     }),
   );
 }

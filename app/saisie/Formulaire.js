@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { STATUTS, ORDRE_STATUTS, estTermine } from '@/lib/constants';
 
 const VIDE = {
-  capaciteH: '', reelH: '', execution: 'NON_DEMARRE', commentaire: '', blocage: '',
+  capaciteH: '', reelH: '', execution: 'NON_DEMARRE', commentaire: '', blocage: '', userStoryId: '',
 };
 
 export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
@@ -173,6 +173,7 @@ export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
                 if (!us) return;
                 setF((prev) => ({
                   ...prev,
+                  userStoryId: us.id,
                   ticket: us.reference || us.projet?.ticket || prev.ticket || '',
                   projet: us.projet?.libelle || prev.projet || '',
                   capaciteH: prev.capaciteH || String(us.heuresEstimees ?? ''),
@@ -253,6 +254,7 @@ export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
         {mes.map((e) => (
           <div key={e.id} style={{ borderLeft: '4px solid var(--orange)', padding: '10px 14px', marginBottom: 14, background: '#f7f8fa' }}>
             <div style={{ fontWeight: 700 }}>{e.ticket} · {e.projet}</div>
+            {e.userStoryRef?.titre && <div className="bloc-note">Sujet lié : {e.userStoryRef.titre}</div>}
             <div style={{ fontSize: 14, margin: '4px 0' }}>{e.objectif}</div>
             <div className="bloc-note">
               {e.capaciteH} h prévues · {e.reelH === null ? 'réel non saisi' : `${e.reelH} h réelles`}
@@ -262,7 +264,7 @@ export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
               <button className="btn ghost" style={{ padding: '6px 12px' }}
                 onClick={() => setF({
                   capaciteH: e.capaciteH, reelH: e.reelH ?? '', execution: e.execution,
-                  commentaire: e.commentaire ?? '', blocage: e.blocage ?? '',
+                  commentaire: e.commentaire ?? '', blocage: e.blocage ?? '', userStoryId: e.userStoryId ?? '',
                 })}>Modifier</button>
               <button className="btn ghost" style={{ padding: '6px 12px' }} onClick={() => supprimer(e.id)}>Supprimer</button>
               {!estTermine(e.execution) && (

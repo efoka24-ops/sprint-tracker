@@ -66,6 +66,11 @@ export async function POST(req) {
     select: { id: true, ticket: true },
   });
   const parTicket = new Map(projets.map((p) => [normaliser(p.ticket), p.id]));
+  const stories = await prisma.userStory.findMany({
+    where: { sprintId: semaine.sprintId },
+    select: { id: true, reference: true },
+  });
+  const storyParRef = new Map(stories.map((s) => [normaliser(s.reference), s.id]));
 
   const resultats = { crees: 0, maj: 0, ignorees: 0, erreurs: [] };
 
@@ -105,6 +110,7 @@ export async function POST(req) {
       ticket,
       projet,
       projetId: parTicket.get(normaliser(ticket)) || null,
+      userStoryId: storyParRef.get(normaliser(ticket)) || null,
       objectif,
       capaciteH: Number(String(capaciteBrut).replace(',', '.')) || 0,
       reelH: reelBrut === '' ? null : Number(String(reelBrut).replace(',', '.')),
