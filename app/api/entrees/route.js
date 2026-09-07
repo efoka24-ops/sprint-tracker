@@ -9,7 +9,9 @@ import { capaciteHebdomadaire, depassementSemaine } from '@/lib/planification';
 
 export const dynamic = 'force-dynamic';
 
-const AVEC_PORTEUR = { developpeur: { select: { id: true, nom: true, role: true, squadId: true } } };
+const AVEC_PORTEUR = {
+  developpeur: { select: { id: true, nom: true, role: true, squadId: true } },
+};
 
 export async function GET(req) {
   const moi = await utilisateurCourant();
@@ -99,6 +101,10 @@ export async function POST(req) {
   });
   data.projetId = projetRef?.id ?? (b.projetId || null);
 
+  const deja = !b.id
+    ? await prisma.entree.findFirst({ where: { semaineId: b.semaineId, developpeurId: porteurId, ticket: data.ticket } })
+    : null;
+
   publierBdEnFond(b.id ? 'mise à jour d’un objectif' : 'saisie d’un objectif');
 
   if (b.id) {
@@ -116,6 +122,16 @@ export async function POST(req) {
       await prisma.entree.update({
         where: { id: b.id },
         data: { ...data, developpeurId: porteurId, semaineId: b.semaineId },
+        include: AVEC_PORTEUR,
+      }),
+    );
+  }
+
+  if (deja) {
+    return NextResponse.json(
+      await prisma.entree.update({
+        where: { id: deja.id },
+        data: { ...data, semaineId: b.semaineId, developpeurId: porteurId },
         include: AVEC_PORTEUR,
       }),
     );

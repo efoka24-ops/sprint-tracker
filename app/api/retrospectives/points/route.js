@@ -5,7 +5,7 @@ import { peut } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
-const TYPES = ['FORT', 'FAIBLE', 'AMELIORATION'];
+const TYPES = ['FORT', 'FAIBLE', 'AMELIORATION', 'REPORT'];
 
 /**
  * Points ajoutés en séance de rétrospective. Le constat automatique déduit des
@@ -83,4 +83,25 @@ export async function DELETE(req) {
 
   await prisma.retrospectivePoint.delete({ where: { id } });
   return NextResponse.json({ ok: true });
+}
+
+/** Modification d'un point (personnalisation avant publication). */
+export async function PATCH(req) {
+  const b = await req.json();
+  const id = String(b.id ?? '');
+  if (!id) return NextResponse.json({ error: 'id manquant' }, { status: 400 });
+
+  const point = await prisma.retrospectivePoint.findUnique({
+    where: { id }, include: { retrospective: { select: { sprintId: true } } },
+  });
+  if (!point) return NextResponse.json({ error: 'Point introuvable' }, { status: 404 });
+
+  const { erreur } = await controler(point.retrospective.sprintId, true);
+  if (erreur) return erreur;
+
+  const texte = String(b.texte ?? '').trim();
+  if (!texte) return NextResponse.json({ error: 'Le texte du point est obligatoire' }, { status: 400 });
+
+  const maj = await prisma.retrospectivePoint.update({ where: { id }, data: { texte } });
+  return NextResponse.json(maj);
 }

@@ -7,6 +7,7 @@ import { STATUTS } from '@/lib/constants';
 import { calculerBilan, constatsAutomatiques } from '@/lib/retrospective';
 import Shell from '@/components/Shell';
 import PointsSeance from './PointsSeance';
+import ReportsSprint from './ReportsSprint';
 import { IconeSucces, IconeAlerte, IconeFleche } from '@/components/Icones';
 
 export const dynamic = 'force-dynamic';
@@ -175,6 +176,10 @@ export default async function RetrospectivePage({ searchParams }) {
       label: 'Statuts en fin de sprint',
       valeur: `${stats.realises} validés · ${stats.enCours} en cours · ${stats.bloques} bloqués`,
     },
+    {
+      label: 'Taux livraison (qualif / business / live)',
+      valeur: `${stats.tauxTestQualif} % / ${stats.tauxTestBusiness} % / ${stats.tauxRealisation} %`,
+    },
   ];
 
   const aReporter = entrees.filter((e) => e.execution !== 'LIVE');
@@ -241,6 +246,10 @@ export default async function RetrospectivePage({ searchParams }) {
                 {aReporter.length}
               </div>
               <div className="retro-stat-l">Sujets à reporter</div>
+            </div>
+            <div>
+              <div className="retro-stat-v" style={{ color: '#fff' }}>{stats.tauxTestQualif} % / {stats.tauxTestBusiness} % / {stats.tauxRealisation} %</div>
+              <div className="retro-stat-l">Taux test qualif / test business / live</div>
             </div>
           </div>
         </div>
@@ -402,15 +411,12 @@ export default async function RetrospectivePage({ searchParams }) {
             )}
 
             <div className="retro-suite-grille">
-              {suites.map((s, i) => (
-                <div key={`${s.owner}-${i}`} className="retro-suite-carte">
-                  <div className="retro-suite-tete">
-                    <span className="retro-suite-type">{s.type}</span>
-                    <span className="retro-suite-owner">{s.owner}</span>
-                  </div>
-                  <div className="retro-suite-action">{s.action}</div>
-                </div>
-              ))}
+              <ReportsSprint
+                sprintId={sprintId}
+                peutEditer={peutEditer}
+                candidats={suites}
+                initiaux={JSON.parse(JSON.stringify((retro?.points ?? []).filter((p) => p.type === 'REPORT')))}
+              />
               {constats.AMELIORATION.map((a, i) => (
                 <div key={`amelioration-${i}`} className="retro-suite-carte">
                   <div className="retro-suite-tete">
@@ -420,9 +426,9 @@ export default async function RetrospectivePage({ searchParams }) {
                   <div className="retro-suite-action">{a}</div>
                 </div>
               ))}
-              {!suites.length && !constats.AMELIORATION.length && (
+              {!constats.AMELIORATION.length && (
                 <div className="retro-suite-action">
-                  Rien à reporter : tous les objectifs du sprint ont été atteints.
+                  Les reports n'apparaissent qu'après validation du Scrum Master.
                 </div>
               )}
             </div>
