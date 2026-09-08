@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react';
 import { STATUTS_PROJET } from '@/lib/projets';
 
-const VIDE = { ticket: '', libelle: '', heuresFaisabilite: '', storyPoints: '', porteurs: [], suiviChecklist: true };
+const VIDE = { ticket: '', libelle: '', heuresFaisabilite: '', porteurs: [], suiviChecklist: true, sprintId: '' };
 
 /**
  * Portefeuille de projets : l'enveloppe estimée en faisabilité est saisie une
  * fois ici, pas recopiée chaque semaine. L'engagement affiché exclut les projets
  * bloqués et terminés.
  */
-export default function Projets({ membres = [], capaciteSprint = 0 }) {
+export default function Projets({ membres = [], sprints = [], capaciteSprint = 0 }) {
   const [projets, setProjets] = useState(null);
   const [engagement, setEngagement] = useState(null);
   const [nouveau, setNouveau] = useState(VIDE);
@@ -105,6 +105,7 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
   if (!projets) return <div className="bloc-note">Chargement…</div>;
 
   const charge = capaciteSprint ? Math.round((engagement.heures / capaciteSprint) * 100) : null;
+  const sprintsTries = [...sprints].sort((a, b) => b.numero - a.numero);
 
   return (
     <>
@@ -113,7 +114,7 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
       <div className="carte-blanche" style={{ marginBottom: 18 }}>
         <div className="bloc-titre" style={{ marginBottom: 6 }}>Engagement de la squad</div>
         <p className="bloc-note" style={{ marginBottom: 14 }}>
-          Somme des enveloppes de faisabilité, hors projets bloqués et terminés.
+          Somme des enveloppes des projets actifs rattachés à un sprint.
         </p>
         <div className="rapport-kpis">
           <div className="rapport-kpi">
@@ -122,7 +123,7 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
           </div>
           <div className="rapport-kpi">
             <div className="v">{engagement.storyPoints} SP</div>
-            <div className="l">Story points engagés</div>
+            <div className="l">Story points engagés (automatiques)</div>
           </div>
           {capaciteSprint > 0 && (
             <div className="rapport-kpi">
@@ -133,7 +134,7 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
         </div>
         {engagement.exclus.length > 0 && (
           <div className="bloc-note" style={{ marginTop: 12 }}>
-            Hors engagement : {engagement.exclus.map((e) => `${e.libelle} (${e.heures} h, ${STATUTS_PROJET[e.statut]?.label ?? e.statut})`).join(' · ')}
+            Hors engagement : {engagement.exclus.map((e) => `${e.libelle} (${e.heures} h, ${e.raison})`).join(' · ')}
             {' '}— soit {engagement.heuresExclues} h mises de côté.
           </div>
         )}
@@ -158,10 +159,14 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
               <input type="number" min="0" step="0.5" value={nouveau.heuresFaisabilite}
                 onChange={(e) => setNouveau({ ...nouveau, heuresFaisabilite: e.target.value })} />
             </div>
-            <div className="field" style={{ width: 110 }}>
-              <label>Story points</label>
-              <input type="number" min="0" step="1" value={nouveau.storyPoints}
-                onChange={(e) => setNouveau({ ...nouveau, storyPoints: e.target.value })} />
+            <div className="field" style={{ minWidth: 220 }}>
+              <label>Sprint</label>
+              <select value={nouveau.sprintId} onChange={(e) => setNouveau({ ...nouveau, sprintId: e.target.value })}>
+                <option value="">— Non planifié —</option>
+                {sprintsTries.map((s) => (
+                  <option key={s.id} value={s.id}>{s.libelle}{s.squad ? ` · ${s.squad.nom}` : ''}</option>
+                ))}
+              </select>
             </div>
             <div className="field"><button className="btn" disabled={busy}>Créer</button></div>
           </div>
@@ -221,7 +226,7 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
           <table>
             <thead>
               <tr>
-                <th>Ticket Perfit</th><th>Projet</th><th>Porteurs <span style={{ fontWeight: 400, textTransform: 'none' }}>(cliquez pour rattacher)</span></th>
+                <th>Ticket Perfit</th><th>Projet</th><th>Sprint</th><th>Porteurs <span style={{ fontWeight: 400, textTransform: 'none' }}>(cliquez pour rattacher)</span></th>
                 <th className="num">Enveloppe</th><th className="num">SP</th>
                 <th className="num">Planifié</th><th className="num">Consommé</th>
                 <th>Checklist</th><th>Statut</th><th className="noprint">Actions</th>
@@ -237,6 +242,15 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
                       {p.ticket}
                     </td>
                     <td>{p.libelle}</td>
+                    <td style={{ minWidth: 180 }}>
+                      <select value={p.sprintId ?? ''} disabled={busy}
+                        onChange={(e) => modifier(p.id, { sprintId: e.target.value || null })}>
+                        <option value="">— Non planifié —</option>
+                        {sprintsTries.map((s) => (
+                          <option key={s.id} value={s.id}>{s.libelle}</option>
+                        ))}
+                      </select>
+                    </td>
                     <td style={{ minWidth: 220 }}>
                       <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
                         {membres.map((m) => {
@@ -265,14 +279,7 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
                       />
                     </td>
                     <td className="num" style={{ minWidth: 80 }}>
-                      <input
-                        type="number" min="0" step="1" defaultValue={p.storyPoints}
-                        style={{ textAlign: 'right' }}
-                        onBlur={(e) => {
-                          const v = Number(e.target.value);
-                          if (v !== p.storyPoints) modifier(p.id, { storyPoints: v });
-                        }}
-                      />
+                      {p.storyPoints} SP
                     </td>
                     <td className="num muted">{p.planifieH} h</td>
                     <td className="num" style={depasse ? { color: 'var(--rouge)', fontWeight: 700 } : undefined}>
@@ -306,7 +313,7 @@ export default function Projets({ membres = [], capaciteSprint = 0 }) {
                 );
               })}
               {!projets.length && (
-                <tr><td colSpan={10} className="bloc-note">Aucun projet. Créez-en un à partir de vos faisabilités.</td></tr>
+                <tr><td colSpan={11} className="bloc-note">Aucun projet. Créez-en un à partir de vos faisabilités.</td></tr>
               )}
             </tbody>
           </table>

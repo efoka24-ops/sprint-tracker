@@ -652,6 +652,7 @@ export default function ConsoleAdmin({
       {onglet === 'projets' && (
         <Projets
           membres={comptes.filter((c) => c.actif && c.role !== 'OBSERVATEUR').map((c) => ({ id: c.id, nom: c.nom }))}
+          sprints={sprints}
           capaciteSprint={sprints.find((s) => !s.cloture)?.capaciteTotale ?? 0}
         />
       )}

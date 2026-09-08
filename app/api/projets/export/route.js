@@ -15,16 +15,18 @@ export async function GET() {
     orderBy: [{ statut: 'asc' }, { libelle: 'asc' }],
     include: {
       squad: { select: { nom: true } },
+      sprint: { select: { libelle: true } },
       porteurs: { include: { developpeur: { select: { nom: true } } } },
     },
   });
 
   const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const lignes = [
-    ['Squad', 'Ticket Perfit', 'Projet', 'Heures faisabilité', 'Story points', 'Statut', 'Suivi checklist', 'Porteurs']
+    ['Squad', 'Sprint', 'Ticket Perfit', 'Projet', 'Heures faisabilité', 'Story points engagés', 'Statut', 'Suivi checklist', 'Porteurs']
       .map(esc).join(';'),
     ...projets.map((p) => [
       p.squad?.nom ?? '—',
+      p.sprint?.libelle ?? '—',
       p.ticket,
       p.libelle,
       p.heuresFaisabilite,

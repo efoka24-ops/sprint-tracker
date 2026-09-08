@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { STATUTS, ORDRE_STATUTS } from '@/lib/constants';
 
 const VIDE = {
-  capaciteH: '', reelH: '', execution: 'NON_DEMARRE', commentaire: '', userStoryId: '',
+  projetId: '', reelH: '', execution: 'NON_DEMARRE', commentaire: '', userStoryId: '',
 };
 
 /**
@@ -21,8 +21,7 @@ export default function Objectifs({ sprints, membres, moiId }) {
   const [f, setF] = useState({ ...VIDE, developpeurId: membres[0]?.id ?? '' });
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [sujets, setSujets] = useState([]);
-  const [sujetId, setSujetId] = useState('');
+  const [projets, setProjets] = useState([]);
 
   // Changer de sprint replace la sélection sur sa première semaine.
   useEffect(() => {
@@ -38,15 +37,17 @@ export default function Objectifs({ sprints, membres, moiId }) {
   };
   useEffect(() => { charger(); /* eslint-disable-next-line */ }, [semaineId]);
 
-  const chargerSujets = async () => {
-    if (!sprintId) return setSujets([]);
-    const porteurId = f.developpeurId || '';
-    const r = await fetch(`/api/user-stories?sprintId=${sprintId}${porteurId ? `&porteurId=${porteurId}` : ''}`, { cache: 'no-store' });
-    if (!r.ok) return setSujets([]);
+  const chargerProjets = async () => {
+    const r = await fetch('/api/projets', { cache: 'no-store' });
+    if (!r.ok) return setProjets([]);
     const d = await r.json();
-    setSujets((d.stories ?? []).filter((s) => ['A_FAIRE', 'EN_COURS', 'BLOQUE'].includes(s.statut)));
+    const visibles = (d.projets ?? []).filter((p) => p.statut !== 'TERMINE' && p.sprintId === sprintId);
+    setProjets(visibles);
   };
-  useEffect(() => { chargerSujets(); setSujetId(''); /* eslint-disable-next-line */ }, [sprintId, f.developpeurId]);
+  useEffect(() => { chargerProjets(); /* eslint-disable-next-line */ }, [sprintId]);
+  useEffect(() => {
+    if (!f.projetId && projets[0]?.id) setF((prev) => ({ ...prev, projetId: projets[0].id }));
+  }, [projets, f.projetId]);
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
@@ -85,7 +86,7 @@ export default function Objectifs({ sprints, membres, moiId }) {
   };
 
   const editer = (l) => setF({
-    projet: l.projet, objectif: l.objectif, capaciteH: l.capaciteH, reelH: l.reelH ?? '',
+    projetId: l.projetId ?? '', objectif: l.objectif, reelH: l.reelH ?? '',
     execution: l.execution, commentaire: l.commentaire ?? '', userStoryId: l.userStoryId ?? '',
   });
 
@@ -140,47 +141,16 @@ export default function Objectifs({ sprints, membres, moiId }) {
           </div>
         </div>
 
-        {sujets.length > 0 && (
-          <div className="field">
-            <label>Sujet du sprint (préremplissage)</label>
-            <select
-              value={sujetId}
-              onChange={(e) => {
-                const id = e.target.value;
-                setSujetId(id);
-                if (!id) return;
-                const us = sujets.find((x) => x.id === id);
-                if (!us) return;
-                setF((prev) => ({
-                  ...prev,
-                  userStoryId: us.id,
-                  ticket: us.reference || us.projet?.ticket || prev.ticket || '',
-                  projet: us.projet?.libelle || prev.projet || '',
-                  capaciteH: prev.capaciteH || String(us.heuresEstimees ?? ''),
-                }));
-              }}
-            >
-              <option value="">— Saisie libre —</option>
-              {sujets.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.reference} · {s.titre}
-                </option>
-              ))}
-            </select>
-            <div className="bloc-note" style={{ marginTop: 4 }}>
-              Le ticket, le projet et la capacité sont repris du sujet ; le porteur met ensuite à jour l'objectif hebdo, le réel et le statut.
-            </div>
-          </div>
-        )}
-
-        <div className="row">
-          <div style={{ flex: 1 }} className="field">
-            <label>Ticket Perfit</label>
-            <input placeholder="#9673" value={f.ticket} onChange={set('ticket')} required />
-          </div>
-          <div style={{ flex: 2 }} className="field">
-            <label>Projet</label>
-            <input placeholder="HLR Manager" value={f.projet} onChange={set('projet')} required />
+        <div className="field">
+          <label>Projet du sprint</label>
+          <select value={f.projetId} onChange={(e) => setF((prev) => ({ ...prev, projetId: e.target.value }))} required>
+            {!projets.length && <option value="">Aucun projet disponible</option>}
+            {projets.map((p) => (
+              <option key={p.id} value={p.id}>{p.ticket} · {p.libelle}</option>
+            ))}
+          </select>
+          <div className="bloc-note" style={{ marginTop: 4 }}>
+            Ticket, projet et capacité sont repris automatiquement depuis ce projet et son backlog du sprint.
           </div>
         </div>
 
@@ -191,10 +161,6 @@ export default function Objectifs({ sprints, membres, moiId }) {
         </div>
 
         <div className="row">
-          <div style={{ flex: 1 }} className="field">
-            <label>Capacité (h)</label>
-            <input type="number" min="0" step="0.5" value={f.capaciteH} onChange={set('capaciteH')} required />
-          </div>
           <div style={{ flex: 1 }} className="field">
             <label>Réel (h)</label>
             <input type="number" min="0" step="0.5" value={f.reelH} onChange={set('reelH')} />

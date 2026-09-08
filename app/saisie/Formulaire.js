@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { STATUTS, ORDRE_STATUTS, estTermine } from '@/lib/constants';
 
 const VIDE = {
-  capaciteH: '', reelH: '', execution: 'NON_DEMARRE', commentaire: '', blocage: '', userStoryId: '',
+  projetId: '', reelH: '', execution: 'NON_DEMARRE', commentaire: '', blocage: '', userStoryId: '',
 };
 
 export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
@@ -17,8 +17,7 @@ export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
   const [busy, setBusy] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
   const [importMsg, setImportMsg] = useState(null);
-  const [sujets, setSujets] = useState([]);
-  const [sujetId, setSujetId] = useState('');
+  const [projets, setProjets] = useState([]);
 
   const importer = async (e) => {
     const fichier = e.target.files?.[0];
@@ -51,16 +50,20 @@ export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
   };
   useEffect(() => { charger(); /* eslint-disable-next-line */ }, [semaineId]);
 
-  const chargerSujets = async () => {
-    const semaine = semaines.find((s) => s.id === semaineId);
-    const sprintId = semaine?.sprintId;
-    if (!sprintId) return setSujets([]);
-    const r = await fetch(`/api/user-stories?sprintId=${sprintId}&porteurId=${moi.id}`, { cache: 'no-store' });
-    if (!r.ok) return setSujets([]);
+  const chargerProjets = async () => {
+    const r = await fetch('/api/projets', { cache: 'no-store' });
+    if (!r.ok) return setProjets([]);
     const d = await r.json();
-    setSujets((d.stories ?? []).filter((s) => ['A_FAIRE', 'EN_COURS', 'BLOQUE'].includes(s.statut)));
+    const sprintId = semaines.find((s) => s.id === semaineId)?.sprintId;
+    const visibles = (d.projets ?? []).filter((p) => p.statut !== 'TERMINE'
+      && p.sprintId === sprintId
+      && (!(p.porteurs?.length) || p.porteurs.some((x) => x.id === moi.id)));
+    setProjets(visibles);
   };
-  useEffect(() => { chargerSujets(); setSujetId(''); /* eslint-disable-next-line */ }, [semaineId]);
+  useEffect(() => { chargerProjets(); /* eslint-disable-next-line */ }, [semaineId]);
+  useEffect(() => {
+    if (!f.projetId && projets[0]?.id) setF((prev) => ({ ...prev, projetId: projets[0].id }));
+  }, [projets, f.projetId]);
 
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
@@ -160,47 +163,16 @@ export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
           </select>
         </div>
 
-        {sujets.length > 0 && (
-          <div className="field">
-            <label>Sujet du sprint (préremplissage)</label>
-            <select
-              value={sujetId}
-              onChange={(e) => {
-                const id = e.target.value;
-                setSujetId(id);
-                if (!id) return;
-                const us = sujets.find((x) => x.id === id);
-                if (!us) return;
-                setF((prev) => ({
-                  ...prev,
-                  userStoryId: us.id,
-                  ticket: us.reference || us.projet?.ticket || prev.ticket || '',
-                  projet: us.projet?.libelle || prev.projet || '',
-                  capaciteH: prev.capaciteH || String(us.heuresEstimees ?? ''),
-                }));
-              }}
-            >
-              <option value="">— Saisie libre —</option>
-              {sujets.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.reference} · {s.titre}
-                </option>
-              ))}
-            </select>
-            <div className="bloc-note" style={{ marginTop: 4 }}>
-              Ticket, projet et capacité sont repris du sujet sélectionné ; vous mettez ensuite à jour l'objectif hebdo, le réel et le statut.
-            </div>
-          </div>
-        )}
-
-        <div className="row">
-          <div style={{ flex: 1 }} className="field">
-            <label>Ticket Perfit</label>
-            <input placeholder="#9673" value={f.ticket} onChange={set('ticket')} required />
-          </div>
-          <div style={{ flex: 2 }} className="field">
-            <label>Projet / sujet</label>
-            <input placeholder="HLR Manager" value={f.projet} onChange={set('projet')} required />
+        <div className="field">
+          <label>Projet du sprint</label>
+          <select value={f.projetId} onChange={(e) => setF((prev) => ({ ...prev, projetId: e.target.value }))} required>
+            {!projets.length && <option value="">Aucun projet disponible</option>}
+            {projets.map((p) => (
+              <option key={p.id} value={p.id}>{p.ticket} · {p.libelle}</option>
+            ))}
+          </select>
+          <div className="bloc-note" style={{ marginTop: 4 }}>
+            Ticket, projet et capacité sont repris automatiquement depuis ce projet et son backlog du sprint.
           </div>
         </div>
 
@@ -211,10 +183,6 @@ export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
         </div>
 
         <div className="row">
-          <div style={{ flex: 1 }} className="field">
-            <label>Capacité prévue (h)</label>
-            <input type="number" min="0" step="0.5" value={f.capaciteH} onChange={set('capaciteH')} required />
-          </div>
           <div style={{ flex: 1 }} className="field">
             <label>Heures réelles (h)</label>
             <input type="number" min="0" step="0.5" placeholder="fin de semaine"
@@ -263,7 +231,7 @@ export default function FormulaireSaisie({ semaines, moi, peutImporter }) {
             <div className="row" style={{ marginTop: 8 }}>
               <button className="btn ghost" style={{ padding: '6px 12px' }}
                 onClick={() => setF({
-                  capaciteH: e.capaciteH, reelH: e.reelH ?? '', execution: e.execution,
+                  projetId: e.projetId ?? '', reelH: e.reelH ?? '', execution: e.execution,
                   commentaire: e.commentaire ?? '', blocage: e.blocage ?? '', userStoryId: e.userStoryId ?? '',
                 })}>Modifier</button>
               <button className="btn ghost" style={{ padding: '6px 12px' }} onClick={() => supprimer(e.id)}>Supprimer</button>

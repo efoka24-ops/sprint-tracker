@@ -4,6 +4,7 @@ import { utilisateurCourant } from '@/lib/auth';
 import { peut } from '@/lib/roles';
 import { normaliserTicket } from '@/lib/projets';
 import { AVEC_PORTEURS, presenter, valider, porteursValides } from '@/lib/projets-serveur';
+import { synchroniserSprintProjet } from '@/lib/userstories-serveur';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,9 +52,18 @@ export async function PATCH(req, { params }) {
     data.ticket = ticket;
   }
   if (b.heuresFaisabilite !== undefined) data.heuresFaisabilite = Number(b.heuresFaisabilite);
-  if (b.storyPoints !== undefined) data.storyPoints = Number(b.storyPoints);
   if (b.statut !== undefined) data.statut = b.statut;
   if (b.suiviChecklist !== undefined) data.suiviChecklist = !!b.suiviChecklist;
+  if (b.sprintId !== undefined) {
+    if (!b.sprintId) {
+      data.sprintId = null;
+    } else {
+      const sprint = await prisma.sprint.findUnique({ where: { id: b.sprintId }, select: { id: true, squadId: true } });
+      if (!sprint) return NextResponse.json({ error: 'Sprint introuvable' }, { status: 404 });
+      if (sprint.squadId !== projet.squadId) return NextResponse.json({ error: 'Sprint d’une autre squad' }, { status: 409 });
+      data.sprintId = sprint.id;
+    }
+  }
 
   // Les porteurs sont remplacés en bloc : le client envoie la liste voulue.
   if (b.porteurs !== undefined) {
@@ -73,6 +83,7 @@ export async function PATCH(req, { params }) {
   }
 
   const maj = await prisma.projet.update({ where: { id }, data, include: AVEC_PORTEURS });
+  if ('sprintId' in data) await synchroniserSprintProjet(id, data.sprintId);
   return NextResponse.json(presenter(maj));
 }
 

@@ -62,6 +62,7 @@ export async function POST(req) {
       reference: b.reference ? normaliserTicket(b.reference) : projet.ticket,
       description: String(b.description ?? '').trim() || null,
       projetId: projet.id,
+      sprintId: b.sprintId || projet.sprintId || null,
       porteurId: b.porteurId || null,
       priorite: PRIORITES[b.priorite] ? b.priorite : 'MOYENNE',
       heuresEstimees: heures,

@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut } from '@/lib/roles';
+import { prisma } from '@/lib/db';
 import { COLONNES_PROJETS } from '@/lib/importProjets';
 import { STATUTS_PROJET } from '@/lib/projets';
 
@@ -12,6 +13,13 @@ export async function GET() {
     return new Response('Réservé au super admin et aux Scrum Masters', { status: 403 });
   }
 
+  const moi = await utilisateurCourant();
+  const sprints = await prisma.sprint.findMany({
+    where: peut(moi, 'dashboard.tout') ? {} : { squadId: moi.squadId ?? null },
+    select: { libelle: true },
+    orderBy: { numero: 'desc' },
+  });
+
   const classeur = new ExcelJS.Workbook();
   const feuille = classeur.addWorksheet('Projets');
 
@@ -19,7 +27,7 @@ export async function GET() {
   feuille.getRow(1).font = { bold: true };
   feuille.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFEFEF' } };
 
-  feuille.addRow(['#9322', 'CXRecov', 120, 55, 'Actif', 'OUI', 'SCHUAME Alexandre, YAYA Arafat']);
+  feuille.addRow([sprints[0]?.libelle ?? 'Sprint #02', '#9322', 'CXRecov', 120, 'Actif', 'OUI', 'SCHUAME Alexandre, YAYA Arafat']);
 
   const statuts = Object.values(STATUTS_PROJET).map((s) => s.label);
   feuille.dataValidations.add('E2:E500', {

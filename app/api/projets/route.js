@@ -28,15 +28,33 @@ export async function GET() {
       })
     : [];
   const parProjet = new Map(consommation.map((c) => [c.projetId, c._sum]));
+  const stories = projets.length
+    ? await prisma.userStory.findMany({
+        where: { projetId: { in: projets.map((p) => p.id) } },
+        select: { projetId: true, sprintId: true, storyPoints: true },
+      })
+    : [];
+  const storiesParProjet = new Map();
+  for (const story of stories) {
+    const liste = storiesParProjet.get(story.projetId) ?? [];
+    liste.push(story);
+    storiesParProjet.set(story.projetId, liste);
+  }
 
-  return NextResponse.json({
-    projets: projets.map((p) => ({
+  const projetsPresents = projets.map((p) => {
+    const storiesProjet = (storiesParProjet.get(p.id) ?? []).filter((s) => (!p.sprintId || s.sprintId === p.sprintId));
+    return {
       ...p,
+      storyPoints: storiesProjet.reduce((s, u) => s + (u.storyPoints || 0), 0),
       porteurs: p.porteurs.map((x) => x.developpeur),
       consommeH: Math.round(parProjet.get(p.id)?.reelH ?? 0),
       planifieH: Math.round(parProjet.get(p.id)?.capaciteH ?? 0),
-    })),
-    engagement: engagement(projets),
+    };
+  });
+
+  return NextResponse.json({
+    projets: projetsPresents,
+    engagement: engagement(projetsPresents),
   });
 }
 
@@ -73,12 +91,21 @@ export async function POST(req) {
   const { ids, erreur: erreurPorteurs } = await porteursValides(b.porteurs, squadId);
   if (erreurPorteurs) return NextResponse.json({ error: erreurPorteurs }, { status: 400 });
 
+  let sprintId = b.sprintId || null;
+  if (sprintId) {
+    const sprint = await prisma.sprint.findUnique({ where: { id: sprintId }, select: { id: true, squadId: true } });
+    if (!sprint) return NextResponse.json({ error: 'Sprint introuvable' }, { status: 404 });
+    if (sprint.squadId !== squadId) return NextResponse.json({ error: 'Sprint d’une autre squad' }, { status: 409 });
+  }
+
   const projet = await prisma.projet.create({
     data: {
       ticket, libelle, squadId,
       heuresFaisabilite: Number(b.heuresFaisabilite) || 0,
-      storyPoints: Number(b.storyPoints) || 0,
+      sprintId,
+      storyPoints: 0,
       statut: b.statut && STATUTS_PROJET[b.statut] ? b.statut : 'ACTIF',
+      suiviChecklist: b.suiviChecklist !== false,
       porteurs: { create: ids.map((developpeurId) => ({ developpeurId })) },
     },
     include: AVEC_PORTEURS,

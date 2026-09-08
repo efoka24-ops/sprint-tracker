@@ -40,7 +40,7 @@ export async function POST(req) {
   const b = await req.json();
   const porteurId = b.developpeurId || moi.id;
 
-  const manquant = ['semaineId', 'ticket', 'projet', 'objectif'].find((k) => !b[k]);
+  const manquant = ['semaineId', 'projetId', 'objectif'].find((k) => !b[k]);
   if (manquant) return NextResponse.json({ error: `Champ requis : ${manquant}` }, { status: 400 });
 
   if (b.execution && !STATUTS[b.execution]) {
@@ -80,39 +80,41 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Un objectif ne peut être validé que si son statut est Live' }, { status: 409 });
   }
 
-  const heures = Number(b.capaciteH) || 0;
+  const projetRef = await prisma.projet.findUnique({
+    where: { id: b.projetId },
+    include: { userStories: true },
+  });
+  if (!projetRef) return NextResponse.json({ error: 'Projet introuvable' }, { status: 404 });
+  if (semaine.sprint.squadId && projetRef.squadId !== semaine.sprint.squadId) {
+    return NextResponse.json({ error: 'Ce projet n\'appartient pas à la squad de ce sprint' }, { status: 409 });
+  }
+  if (projetRef.sprintId !== semaine.sprintId) {
+    return NextResponse.json({ error: 'Ce projet n’est pas rattaché au sprint sélectionné' }, { status: 409 });
+  }
+
+  const histoiresSprint = (projetRef.userStories ?? []).filter((u) => u.sprintId === semaine.sprintId);
+  const histoirePorteur = histoiresSprint.find((u) => u.porteurId === porteurId) || histoiresSprint[0] || null;
+  const heuresAuto = Number(histoirePorteur?.heuresEstimees ?? 0) || 0;
+
+  const heures = heuresAuto;
   const debordement = await verifierSemaine({ heures, porteurId, semaine, entreeId: b.id });
   if (debordement) return NextResponse.json({ error: debordement }, { status: 409 });
 
   const data = {
-    ticket: String(b.ticket).trim(),
-    projet: String(b.projet).trim(),
-    projetId: null,
-    userStoryId: b.userStoryId || null,
+    ticket: String(histoirePorteur?.reference || projetRef.ticket).trim(),
+    projet: String(projetRef.libelle).trim(),
+    projetId: projetRef.id,
+    userStoryId: histoirePorteur?.id || null,
     objectif: String(b.objectif).trim(),
-    capaciteH: Number(b.capaciteH) || 0,
+    capaciteH: heuresAuto,
     reelH: b.reelH === '' || b.reelH === null || b.reelH === undefined ? null : Number(b.reelH),
     execution: b.execution || 'NON_DEMARRE',
     commentaire: b.commentaire || null,
     blocage: b.blocage || null,
   };
 
-  const projetRef = await prisma.projet.findFirst({
-    where: { squadId: semaine.sprint.squadId ?? null, ticket: data.ticket },
-    select: { id: true },
-  });
-  data.projetId = projetRef?.id ?? (b.projetId || null);
-
-  if (data.userStoryId) {
-    const us = await prisma.userStory.findUnique({ where: { id: data.userStoryId }, select: { id: true, sprintId: true } });
-    if (!us) return NextResponse.json({ error: 'Sujet du sprint introuvable' }, { status: 404 });
-    if (us.sprintId !== semaine.sprintId) {
-      return NextResponse.json({ error: 'Ce sujet n\'appartient pas au sprint sélectionné' }, { status: 409 });
-    }
-  }
-
   const deja = !b.id
-    ? await prisma.entree.findFirst({ where: { semaineId: b.semaineId, developpeurId: porteurId, ticket: data.ticket } })
+    ? await prisma.entree.findFirst({ where: { semaineId: b.semaineId, developpeurId: porteurId, projetId: data.projetId } })
     : null;
 
   publierBdEnFond(b.id ? 'mise à jour d’un objectif' : 'saisie d’un objectif');

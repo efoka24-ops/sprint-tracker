@@ -50,7 +50,7 @@ export async function POST(req) {
 
   const perimetre = peut(moi, 'compte.gerer') ? {} : { squadId: moi.squadId ?? null };
   const [projets, membres] = await Promise.all([
-    prisma.projet.findMany({ where: perimetre, select: { id: true, ticket: true, libelle: true, squadId: true } }),
+    prisma.projet.findMany({ where: perimetre, select: { id: true, ticket: true, libelle: true, squadId: true, sprintId: true } }),
     prisma.developpeur.findMany({
       where: { actif: true, ...(peut(moi, 'compte.gerer') ? {} : { squadId: moi.squadId ?? undefined }) },
       select: { id: true, nom: true, squadId: true },
@@ -96,6 +96,7 @@ export async function POST(req) {
       reference: ticket ? normaliserTicket(ticket) : projet.ticket,
       titre,
       projetId: projet.id,
+      sprintId: projet.sprintId ?? null,
       porteurId,
       priorite: prioriteDepuisLibelle(priorite),
       heuresEstimees: heures,

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { utilisateurCourant } from '@/lib/auth';
 import { peut } from '@/lib/roles';
 import { normaliserTicket } from '@/lib/projets';
+import { synchroniserSprintProjet } from '@/lib/userstories-serveur';
 import {
   texteCellule,
   nombre,
@@ -48,6 +49,13 @@ export async function POST(req) {
     select: { id: true, nom: true },
   });
   const membreParNom = new Map(membres.map((m) => [normaliserNom(m.nom), m]));
+  const sprints = await prisma.sprint.findMany({ where: { squadId }, select: { id: true, libelle: true, numero: true } });
+  const sprintParCle = new Map();
+  for (const sprint of sprints) {
+    sprintParCle.set(normaliserNom(sprint.libelle), sprint);
+    sprintParCle.set(normaliserNom(`Sprint #${String(sprint.numero).padStart(2, '0')}`), sprint);
+    sprintParCle.set(normaliserNom(`Sprint #${sprint.numero}`), sprint);
+  }
 
   const resultats = { crees: 0, maj: 0, ignorees: 0, erreurs: [] };
 
@@ -55,10 +63,10 @@ export async function POST(req) {
     const ligne = feuille.getRow(i);
     if (ligne.actualCellCount === 0) continue;
 
-    const ticketBrut = texteCellule(ligne.getCell(1));
-    const libelle = texteCellule(ligne.getCell(2));
-    const heures = nombre(texteCellule(ligne.getCell(3)));
-    const sp = Math.round(nombre(texteCellule(ligne.getCell(4))));
+    const sprintBrut = texteCellule(ligne.getCell(1));
+    const ticketBrut = texteCellule(ligne.getCell(2));
+    const libelle = texteCellule(ligne.getCell(3));
+    const heures = nombre(texteCellule(ligne.getCell(4)));
     const statut = statutProjetDepuisLibelle(texteCellule(ligne.getCell(5)));
     const suiviChecklist = boolDepuisOuiNon(texteCellule(ligne.getCell(6)), true);
     const porteursBrut = texteCellule(ligne.getCell(7));
@@ -75,6 +83,11 @@ export async function POST(req) {
     }
     if (!statut) {
       resultats.erreurs.push(`Ligne ${i} : statut de projet inconnu`);
+      continue;
+    }
+    const sprint = sprintBrut ? sprintParCle.get(normaliserNom(sprintBrut)) : null;
+    if (sprintBrut && !sprint) {
+      resultats.erreurs.push(`Ligne ${i} : sprint « ${sprintBrut} » introuvable dans la squad`);
       continue;
     }
 
@@ -102,9 +115,10 @@ export async function POST(req) {
       ticket,
       libelle,
       heuresFaisabilite: heures,
-      storyPoints: sp,
+      storyPoints: 0,
       statut,
       suiviChecklist,
+      sprintId: sprint?.id ?? null,
       squadId,
     };
 
@@ -122,14 +136,16 @@ export async function POST(req) {
           },
         },
       });
+      await synchroniserSprintProjet(projetExistant.id, data.sprintId);
       resultats.maj += 1;
     } else {
-      await prisma.projet.create({
+      const cree = await prisma.projet.create({
         data: {
           ...data,
           porteurs: { create: ids.map((developpeurId) => ({ developpeurId })) },
         },
       });
+      await synchroniserSprintProjet(cree.id, data.sprintId);
       resultats.crees += 1;
     }
   }

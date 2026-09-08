@@ -79,6 +79,8 @@ model Projet {
   suiviChecklist    Boolean  @default(true)       // pilotage checklist projet actif ou non
   squad             Squad?   @relation(fields: [squadId], references: [id])
   squadId           String?
+  sprint            Sprint?  @relation(fields: [sprintId], references: [id])
+  sprintId          String?
   porteurs          ProjetPorteur[]
   userStories       UserStory[]
   entrees           Entree[]
@@ -87,6 +89,7 @@ model Projet {
 
   @@unique([squadId, ticket])
   @@index([statut])
+  @@index([sprintId])
 }
 
 /**
@@ -146,6 +149,7 @@ model Sprint {
   squad          Squad?    @relation(fields: [squadId], references: [id])
   squadId        String?
   semaines       Semaine[]
+  projets        Projet[]
   retrospective  Retrospective?
   checklists     ChecklistInstance[]
 
